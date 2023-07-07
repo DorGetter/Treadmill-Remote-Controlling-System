@@ -336,6 +336,6 @@ void loop() {
   Serial.print("   pu: ");Serial.print(PUMP_ON_LED); ;Serial.print("   seconds: ");Serial.print(SECONDS);   
   Serial.print("  DONE  "); Serial.println(DONE);
 
-  delay(200);
+  delay(500);
   
 }
