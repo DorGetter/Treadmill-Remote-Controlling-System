@@ -329,7 +329,7 @@ void setup() {
 
 void loop() {
 
-  if (SECONDS >= 30)             {DONE = true;   sender_helper("status", "Time_Out",0,DONE); equipmentOnTrigger(false);}
+  if (SECONDS >= 1800)          {DONE = true;   sender_helper("status", "Time_Out",0,DONE); equipmentOnTrigger(false);}
   if (EQUIPMENT_ON_LED && DONE) {DONE = false;  sender_helper("status", "Time_Out",0,DONE);}
 
   Serial.print("eq: ");Serial.print(EQUIPMENT_ON_LED);Serial.print("   ter: ");Serial.print(TREADMILL_ON_LED);

@@ -19,6 +19,7 @@ define pin_buttonPumpOffLed, pin_buttonEqOffLed
 #include "esp_event_loop.h"
 #define I2C_SCL 33
 #define I2C_SDA 32
+#define MAX17043_I2C_ADDRESS 0x36
 
 
 U8G2_ST7567_ENH_DG128064I_F_SW_I2C u8g2(U8G2_R2, 2, 15, U8X8_PIN_NONE);
@@ -71,7 +72,7 @@ long BatteryReadingInterval = 1000; // Time interval for reading battery voltage
 float battery_voltage=4100;
 int RSSI_SIGNAL=-100;
 unsigned long LAST_PATCKET_RSST_TIME = 0;
-
+bool CHARGING = false;
 
 void DrawBatteryGauge() {
   // Read battery voltage every BatteryReadingInterval ms
@@ -232,6 +233,14 @@ void DrawEquepmentOn(bool equipmentOn){
   } 
 }
 
+
+void DrawChargingSymbol(bool charge){
+  if (charge){
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setCursor(20, 25);
+    u8g2.print("CH");
+  } 
+}
 
 
 
@@ -428,7 +437,7 @@ void button_lowerDownRelease(){
 
 
 void EquipmentOn_status(bool val){
-  Serial.print("EquipmentOn_status:    "); Serial.print(val);
+  // Serial.print("EquipmentOn_status:    "); Serial.print(val);
   if (EQUIPMENT_ON == val){return;}
   else{
     EQUIPMENT_ON = val;
@@ -449,7 +458,7 @@ void EquipmentOn_status(bool val){
 }
 
 void TreadmillOn_status(bool val){
-  Serial.print("  TreadmillOn_status:    "); Serial.print(val);
+  // Serial.print("  TreadmillOn_status:    "); Serial.print(val);
   if (EQUIPMENT_ON) {
     if (TREADMILL_ON == val){return;}
     else {
@@ -470,7 +479,7 @@ void TreadmillOn_status(bool val){
 }
 
 void PunpOn_status(bool val){
-  Serial.print(" PunpOn_status:    "); Serial.println(val);
+  // Serial.print(" PunpOn_status:    "); Serial.println(val);
   if (EQUIPMENT_ON) {
     if (PUMP_ON == val){}
     else {
@@ -606,6 +615,48 @@ void LogicsHandler(){
   }
 }
 
+float last_soc = 0.0;
+float getStateOfCharge() {
+    Wire.beginTransmission(MAX17043_I2C_ADDRESS);
+    Wire.write(0x04);  // Register address for SOC
+    Wire.endTransmission();
+
+    Wire.requestFrom(MAX17043_I2C_ADDRESS, 2);
+    if(Wire.available()) {
+        uint8_t msb = Wire.read();  // read the most significant byte
+        uint8_t lsb = Wire.read();  // read the least significant byte
+
+        // The most significant byte represents the integer part of the SOC
+        // The least significant byte represents the decimal part of the SOC
+        float soc = msb + (lsb / 256.0f);
+        return soc;
+    }
+    else {
+        // If we were unable to read the SOC, return a negative value to indicate an error
+        return -1.0f;
+    }
+}
+void ChargingHandler(){
+    while(true){
+    // Request state of charge from MAX17043
+    float soc = getStateOfCharge();
+    Serial.print("current soc: "); Serial.print(soc); Serial.print("  last soc: "); Serial.println(last_soc); 
+    // Compare with the last state of charge
+    if(soc > last_soc) {
+        CHARGING=true;
+    }
+    else if(soc < last_soc) {
+        CHARGING = false;
+    }
+    else {}
+    
+    // Save the current state of charge for the next comparison
+    last_soc = soc;
+
+    delay(100);
+  }
+}
+
 /*
 ###################################################################################################
 ########################################## SETUP ##################################################
@@ -697,6 +748,8 @@ void setup(void) {
   xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 4096, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&ScreenBrightnessHandler, "screenDimmer", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 1024, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore((TaskFunction_t)&ChargingHandler, "ChargingHandler", 1024, NULL, 1, NULL, 1);
+
 
  }
 
@@ -722,6 +775,7 @@ void loop(void) {
       DrawResetTimmer(RESET);
       DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
       DrawDone(DONE) ;    
+      DrawChargingSymbol(true) ;    
       DrawEquepmentOn(EQUIPMENT_ON);
     } while (u8g2.nextPage());
 }
