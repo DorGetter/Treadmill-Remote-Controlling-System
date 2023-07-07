@@ -57,25 +57,6 @@ MX1508 motor(pin_Motor_L, pin_Motor_R, CH1, CH2);
 
 
 
-/****************************************************************************************************
-*****************************************************************************************************
-*********************************** STATUS VARIALBLES ***********************************************
-******************************************************************************************************/
-int EQuipmentOn = false;
-int SPEED = 0;
-int PUMP_ON = 0;
-int SECONDS = 0;
-int RUNNING_TIMER = false;
-float POT_STATUS = 0;
-
-
-bool EQUIPMENT_ON_LED = false;
-bool TREADMILL_ON_LED = false;
-bool PUMP_ON_LED = false;
-bool LIFT_UP_BUTTON = false;
-bool LIFT_DOWN_BUTTON = false;
-
-
 
 esp_now_peer_info_t peerInfo;
 
@@ -94,95 +75,84 @@ struct_message myData;
 // Handlers variables//
 
 
+
+
 /****************************************************************************************************
 *****************************************************************************************************
-*********************************** HANDLERS ********************************************************
+*********************************** STATUS VARIALBLES ***********************************************
 ******************************************************************************************************/
-void EQUIPMENT_ON_listner(){
-    // Set values to send
-  strcpy(myData.messageName, "status");
+// int EQuipmentOn = false;
+int SPEED = 0;
+int SECONDS = 0;
+int RUNNING_TIMER = false;
+float POT_STATUS = 0;
+bool DONE = true;
 
-  if (EQUIPMENT_ON_LED) {strcpy(myData.operation, "Equipment_on");} else {strcpy(myData.operation, "Equipment_off");}
-  myData.currentValue = 0.0;
-  myData.currentLevel = EQUIPMENT_ON_LED;
-  // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-  
-  if (result == ESP_OK) {
-  // Serial.println("Sent with success");
-  }
+bool EQUIPMENT_ON_LED = false;
+bool TREADMILL_ON_LED = false;
+bool PUMP_ON_LED = false;
+bool LIFT_UP_BUTTON = false;
+bool LIFT_DOWN_BUTTON = false;
 
+
+
+
+
+
+/****************************************************************************************************
+*****************************************************************************************************
+*********************************** TRIGGERS ********************************************************
+******************************************************************************************************/
+
+void equipmentOnTrigger(bool val){
+  Serial.print("equipment trigger: "); Serial.println(val);
+    if (val == EQUIPMENT_ON_LED){return;} 
+    else if (val) {digitalWrite( pin_Eq_On_OUT,         HIGH);  delay(100); digitalWrite( pin_Eq_On_OUT,          LOW);delay(100);}
+    else          {digitalWrite( pin_Eq_Off_OUT,        HIGH);  delay(100); digitalWrite( pin_Eq_Off_OUT,         LOW);delay(100);
+                   digitalWrite( pin_TreadMill_Off_OUT, HIGH);  delay(100); digitalWrite( pin_TreadMill_Off_OUT,  LOW);delay(100);
+                   digitalWrite( pin_Pump_Off_OUT,      HIGH);  delay(100); digitalWrite( pin_Pump_Off_OUT,       LOW);delay(100);
+                   RUNNING_TIMER = false;  SECONDS = 0;
+                   }
 }
 
-void TREADMILL_ON_listner(){
-    // Set values to send
-  strcpy(myData.messageName, "status");
-
-  if (EQUIPMENT_ON_LED) {strcpy(myData.operation, "TraidmilOn");} else {strcpy(myData.operation, "TraidmilOff");}
-  myData.currentValue = 0.0;
-  myData.currentLevel = TREADMILL_ON_LED;
-  // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-  
-  if (result == ESP_OK) {
-  // Serial.println("Sent with success");
-  }
-
-}
-
-void PUMP_ON_listner(){
-    // Set values to send
-  strcpy(myData.messageName, "status");
-
-  if (EQUIPMENT_ON_LED) {strcpy(myData.operation, "Pump_on");} else {strcpy(myData.operation, "Pump_off");}
-  myData.currentValue = 0.0;
-  myData.currentLevel = TREADMILL_ON_LED;
-  // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-  
-  if (result == ESP_OK) {
-  // Serial.println("Sent with success");
-  }
-}
-
-void LIFT_Llistner(){
-  ///
-  if (LIFT_DOWN_BUTTON) {
-      // Set values to send
-    strcpy(myData.messageName, "status");
-    strcpy(myData.operation, "liftDown");
-    myData.currentValue = 0.0;
-    myData.currentLevel = LIFT_DOWN_BUTTON;
-    // Send message via ESP-NOW
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+void treadmillOnTrigger(bool val){
+  Serial.print("treadmill trigger: "); Serial.println(val);
+  if (val == TREADMILL_ON_LED){return;} 
+  else if (EQUIPMENT_ON_LED){
     
-    if (result == ESP_OK) {
-    // Serial.println("Sent with success");
-    }
-  }
-  /// 
-   else if (LIFT_UP_BUTTON) {
-      // Set values to send
-    strcpy(myData.messageName, "status");
-    strcpy(myData.operation, "liftUp");
-    myData.currentValue = 0.0;
-    myData.currentLevel = LIFT_UP_BUTTON;
-    // Send message via ESP-NOW
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-    
-    if (result == ESP_OK) {
-    // Serial.println("Sent with success");
-    }
-  }
+    if (val)        {digitalWrite( pin_TreadMill_On_OUT, HIGH   );  delay(200); digitalWrite( pin_TreadMill_On_OUT,  LOW); RUNNING_TIMER = true;}
 
+    else            {digitalWrite( pin_TreadMill_Off_OUT, HIGH  );  delay(200); digitalWrite( pin_TreadMill_Off_OUT, LOW); RUNNING_TIMER = false;}
+  }
 }
 
+void treadmillStopTrigger(){
+  
+  Serial.print("treadmillStop trigger: ");
+  digitalWrite( pin_TreadMill_Off_OUT, HIGH  );  delay(200); digitalWrite( pin_TreadMill_Off_OUT, LOW); RUNNING_TIMER = false;
+  RUNNING_TIMER = false;
+}
+
+void treadmillResetTrigger(){
+    Serial.print("treadmillReset trigger: "); 
+    SECONDS = 0; 
+}
+
+void pumpOnTrigger(bool val){
+  if (val)    {digitalWrite( pin_Pump_On_OUT, HIGH   );   delay(200); digitalWrite( pin_Pump_On_OUT,  LOW);}
+  else        {digitalWrite( pin_Pump_Off_OUT, HIGH  );   delay(200); digitalWrite( pin_Pump_Off_OUT, LOW);}
+  
+}
+
+
+
+/****************************************************************************************************
+*****************************************************************************************************
+*********************************** SEND & RECIEAVE *************************************************
+******************************************************************************************************/
 
 // callback when data is sent
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  // Serial.print("\r\nLast Packet Send Status:\t");
-  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-}
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {}
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
    memcpy(&myData, incomingData, sizeof(myData));
@@ -190,12 +160,19 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   if (strcmp(myData.messageName, "signal") == 0) {} // Do nothing.
   if (strcmp(myData.messageName, "status") == 0){
     // Serial.println(myData.operation);
-    if      (strcmp(myData.operation, "Equipment_on") == 0) {EQuipmentOn=myData.currentLevel;}
-    else if (strcmp(myData.operation, "TraidmilOn") == 0) {RUNNING_TIMER=myData.currentLevel; SECONDS=myData.currentValue;}
-    else if (strcmp(myData.operation, "TraidmilOn") == 0) {RUNNING_TIMER=myData.currentLevel; SECONDS=myData.currentValue;}
-    else if (strcmp(myData.operation, "SpeedUP") == 0) {motor.motorGo(255); }
-    else if (strcmp(myData.operation, "SpeedRev") == 0) {motor.motorRev(255);}
-    else if (strcmp(myData.operation, "SpeedStop") == 0) { motor.motorBrake();}
+    if      (strcmp(myData.operation, "EquipmentOn") == 0)    {equipmentOnTrigger(myData.currentLevel);}
+    else if (strcmp(myData.operation, "TreadmillOn") == 0)   {treadmillOnTrigger(myData.currentLevel);}
+    else if (strcmp(myData.operation, "TreadmillStop") == 0) {treadmillStopTrigger();  motor.motorBrake();}
+    else if (strcmp(myData.operation, "TreadmillReset") == 0) {treadmillResetTrigger(); motor.motorBrake();}
+    else if (strcmp(myData.operation, "PumpOn") == 0)         {pumpOnTrigger(myData.currentLevel);}
+
+    // else if (strcmp(myData.operation, "LiftUP") == 0)    {motor.motorGo(255);  }
+    // else if (strcmp(myData.operation, "LiftRev") == 0)   {motor.motorRev(255); }
+    // else if (strcmp(myData.operation, "LiftStop") == 0)  {motor.motorBrake();  }
+
+    else if (strcmp(myData.operation, "SpeedUP") == 0)    {motor.motorGo(255);  }
+    else if (strcmp(myData.operation, "SpeedRev") == 0)   {motor.motorRev(255); }
+    else if (strcmp(myData.operation, "SpeedStop") == 0)  {motor.motorBrake();  }
 
     
   }   
@@ -205,6 +182,59 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 *****************************************************************************************************
 *********************************** THREADS *********************************************************
 ******************************************************************************************************/
+
+void sender_helper(String message_name, String operation, float currentValue, bool currentLevel){
+  // In charge of sending triggers to the premise system. 
+  // Set values to send
+
+  strcpy(myData.messageName, message_name.c_str());
+  strcpy(myData.operation, operation.c_str());
+  myData.currentValue = currentValue;
+  myData.currentLevel = currentLevel;
+
+  
+  // Send message via ESP-NOW
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+}
+
+
+void GetLedAndButtonsStatus(){
+  while(true){
+    EQUIPMENT_ON_LED  = digitalRead(pin_Eq_On_Led_IN);          delay(15);
+    TREADMILL_ON_LED  = digitalRead(pin_TreadMill_On_Led_IN);   delay(15);
+    PUMP_ON_LED       = digitalRead(pin_Pump_On_Led_IN);        delay(15);
+
+    // LIFT_UP_BUTTON    = digitalRead(pin_Lift_Treadmill_IN);     delay(20);
+    // LIFT_DOWN_BUTTON  = digitalRead(pin_Lower_Treadmill_IN);    delay(20);
+  }
+}
+
+void SendConnectionSignalAndStatus(){
+  while(true){
+    sender_helper("timer",  "",             SECONDS,          true);              delay(10);
+
+    sender_helper("status", "Equipment_on",   0,              EQUIPMENT_ON_LED);  delay(10);
+    sender_helper("status", "Treadmill_On",   0,              TREADMILL_ON_LED);  delay(10);
+    sender_helper("status", "Pump_On",        0,              PUMP_ON_LED);       delay(10);
+  }
+}
+
+void SendSignalAndSpeed(){
+  while(true){
+    sender_helper("signal", "",             SPEED,                true);             
+    delay(20);
+  }
+}
+
+
+void StopperHandler(void* pvParameter) {
+  while (true) {
+    if (RUNNING_TIMER){ SECONDS+=1; delay(1000);}
+    else {delay(100);} // Update every 100ms
+  }
+}
+
+
 int __mapPotenziometerValue__(int input) {
   int inputMin = 0;     // Minimum input value
   int inputMax = 1570;  // Maximum input value
@@ -218,58 +248,8 @@ void GetAnalogValue(){
   while(true){
     SPEED = __mapPotenziometerValue__(analogRead(pin_potenziometer));
     delay(200);
-
   }
 }
-
-
-
-void GetLedAndButtonsStatus(){
-  while(true){
-  EQUIPMENT_ON_LED  = digitalRead(pin_Eq_On_Led_IN);
-  TREADMILL_ON_LED  = digitalRead(pin_TreadMill_On_Led_IN);
-  PUMP_ON_LED       = digitalRead(pin_Pump_On_Led_IN);
-
-  Serial.print(" equ on:"); Serial.print(EQUIPMENT_ON_LED); 
-  Serial.print("     tre on:"); Serial.print(TREADMILL_ON_LED); 
-  Serial.print("     pu on:"); Serial.print(PUMP_ON_LED); 
-  Serial.println();
-
-  LIFT_UP_BUTTON    = digitalRead(pin_Lift_Treadmill_IN);
-  LIFT_DOWN_BUTTON  = digitalRead(pin_Lower_Treadmill_IN);
-
-
-
-  // EQUIPMENT_ON_listner();
-  // TREADMILL_ON_listner();
-  // PUMP_ON_listner();
-  // LIFT_listner();
-  delay(150);
-  }
-}
-
-void SendConnectionSignal(){
-  while(true){
-  // Serial.println("Sending Signal");
-    // Set values to send
-    strcpy(myData.messageName, "signal");
-    strcpy(myData.operation, "");
-    myData.currentValue = SPEED;
-    myData.currentLevel = true;
-    // Send message via ESP-NOW
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-
-    delay(400);
-  }
-}
-
-void StopperHandler(void* pvParameter) {
-  while (true) {
-    if (RUNNING_TIMER){ SECONDS+=1; delay(1000);}
-    else {delay(100);} // Update every 100ms
-  }
-}
-
 
 
 /****************************************************************************************************
@@ -337,47 +317,25 @@ void setup() {
   analogSetPinAttenuation(pin_potenziometer, ADC_6db);
   analogReadResolution(16);
 
-  xTaskCreatePinnedToCore((TaskFunction_t)&GetAnalogValue, "GetAnalogValue", 1024, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore((TaskFunction_t)&GetLedAndButtonsStatus, "GetLedAndButtonsStatus", 4096, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore((TaskFunction_t)&SendConnectionSignal, "SendConnectionSignal", 4096, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore((TaskFunction_t)&StopperHandler, "StopperHandler", 4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore((TaskFunction_t)&GetAnalogValue,                "GetAnalogValue",                 1024, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore((TaskFunction_t)&GetLedAndButtonsStatus,        "GetLedAndButtonsStatus",         4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore((TaskFunction_t)&SendConnectionSignalAndStatus, "SendConnectionSignalAndStatus",  4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore((TaskFunction_t)&SendSignalAndSpeed,            "SendSignalAndSpeed",             4096, NULL, 1, NULL, 0);
 
+  xTaskCreatePinnedToCore((TaskFunction_t)&StopperHandler,                "StopperHandler",                 4096, NULL, 1, NULL, 0);
 }
+
 
 
 void loop() {
-  // digitalWrite( pin_Eq_On_OUT, HIGH  ); Serial.print("pin_Eq_On_OUT on: "); delay(2000); digitalWrite( pin_Eq_On_OUT, LOW  );   Serial.println("pin_Eq_On_OUT off: "); delay(8000);
-  // digitalWrite( pin_Eq_Off_OUT, HIGH  ); Serial.print("pin_Eq_Off_OUT on"); delay(2000); digitalWrite( pin_Eq_Off_OUT, LOW  );  Serial. println(" pin_Eq_Off_OUT off");delay(8000);
 
+  if (SECONDS >= 30)             {DONE = true;   sender_helper("status", "Time_Out",0,DONE); equipmentOnTrigger(false);}
+  if (EQUIPMENT_ON_LED && DONE) {DONE = false;  sender_helper("status", "Time_Out",0,DONE);}
 
-  // digitalWrite( pin_TreadMill_On_OUT, HIGH  ); Serial.print("pin_TreadMill_On_OUT on: "); delay(2000); digitalWrite( pin_TreadMill_On_OUT, LOW  );   Serial.println(" pin_TreadMill_On_OUT off: "); delay(8000);
-  // digitalWrite( pin_TreadMill_Off_OUT, HIGH  ); Serial.print("pin_TreadMill_Off_OUT on"); delay(2000); digitalWrite( pin_TreadMill_Off_OUT, LOW  );  Serial. println(" pin_TreadMill_Off_OUT off");delay(8000);
+  Serial.print("eq: ");Serial.print(EQUIPMENT_ON_LED);Serial.print("   ter: ");Serial.print(TREADMILL_ON_LED);
+  Serial.print("   pu: ");Serial.print(PUMP_ON_LED); ;Serial.print("   seconds: ");Serial.print(SECONDS);   
+  Serial.print("  DONE  "); Serial.println(DONE);
 
-  // digitalWrite( pin_Pump_On_OUT, HIGH  ); Serial.print("pin_Eq_On_OUT on: "); delay(2000); digitalWrite( pin_Pump_On_OUT, LOW  );   Serial.println("pin_Pump_On_OUT off: "); delay(8000);
-  // digitalWrite( pin_Pump_Off_OUT, HIGH  ); Serial.print("pin_Pump_Off_OUT on"); delay(2000); digitalWrite( pin_Pump_Off_OUT, LOW  );  Serial. println(" pin_Pump_Off_OUT off");delay(8000);
-
-
-  //   digitalWrite( pin_Eq_On_OUT, HIGH  );  delay(2000); digitalWrite( pin_Eq_On_OUT, LOW  );   delay(8000);
-  // digitalWrite( pin_Eq_Off_OUT, HIGH  ); delay(2000); digitalWrite( pin_Eq_Off_OUT, LOW  ); delay(8000);
-
-
-  // digitalWrite( pin_TreadMill_On_OUT, HIGH  );  delay(2000); digitalWrite( pin_TreadMill_On_OUT, LOW  );   delay(8000);
-  // digitalWrite( pin_TreadMill_Off_OUT, HIGH  ); delay(2000); digitalWrite( pin_TreadMill_Off_OUT, LOW  ); delay(8000);
-
-  // digitalWrite( pin_Pump_On_OUT, HIGH  ); delay(2000); digitalWrite( pin_Pump_On_OUT, LOW  );    delay(8000);
-  // digitalWrite( pin_Pump_Off_OUT, HIGH  );  delay(2000); digitalWrite( pin_Pump_Off_OUT, LOW  ); delay(8000);
+  delay(200);
   
-}
-
-
-void print_status(){
-
-  // int x= digitalRead(pin_Eq_On_Led); Serial.print("equipmentOn value: "); Serial.print(x);
-  // Serial.println("********************************************************************");
-  // Serial.print("Equipment=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"); Serial.print(EQUIPMENT_ON_LED);
-  // int minutes = SECONDS / 60;
-  // int seconds = SECONDS % 60;
-  // Serial.print("  TIMER="); Serial.print(minutes); Serial.print(":");Serial.print(seconds); Serial.print("  RUNNING_TIMER="); Serial.print(RUNNING_TIMER); Serial.println();
-  // Serial.println("********************************************************************");
-  // delay(1000);
 }

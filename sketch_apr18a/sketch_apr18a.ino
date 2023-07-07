@@ -27,6 +27,36 @@ U8G2_ST7567_ENH_DG128064I_F_SW_I2C u8g2(U8G2_R2, 2, 15, U8X8_PIN_NONE);
 // uint8_t broadcastAddress[] = { 0x54, 0x43, 0xB2, 0xA9, 0x1E, 0x90 };  // first ESP
 // uint8_t broadcastAddress[] = {0xEC, 0x62, 0x60, 0x77, 0x7A, 0xFC}; // This MAC adress Remote System
 
+
+
+
+
+
+
+
+
+/*
+###################################################################################################
+###################################### SCRIPT VARIABLES ###########################################
+###################################################################################################
+*/
+/*variables STATUS*/
+
+int EQUIPMENT_ON = false;
+int TREADMILL_ON = false;
+int PUMP_ON = false;
+int SPEED = 0;
+int SECONDS=0;
+int RUNNING_TIMER=false;
+int RESET = false;
+int DONE = false;
+int DIMMER = 0;
+
+
+
+
+
+
 /*
 ###################################################################################################
 ###################################### DISPLAY DRAWERS ############################################
@@ -191,7 +221,6 @@ void DrawDone(bool done){
     u8g2.setFont(u8g2_font_inr24_mf);
     u8g2.setCursor(2, 56);
     u8g2.print("END !"); 
-    // Serial.println("DONE DRAW");
   }
 }
 
@@ -205,15 +234,6 @@ void DrawEquepmentOn(bool equipmentOn){
 
 
 
-/*
-###################################################################################################
-###################################### FUNCTIONALITY  #############################################
-###################################################################################################
-*/
-
-void sendOnChange(String what_change, String value_change){
-    Serial.println("Equipment_on pressed!");
-}
 
 /*
 ###################################################################################################
@@ -221,8 +241,7 @@ void sendOnChange(String what_change, String value_change){
 ###################################################################################################
 */
 
-// Structure example to receive data
-// Must match the sender structure
+// Structure to receive data. Must match the sender structure
 typedef struct struct_message {
     char messageName[32]; // can be either ['signal', 'statusUpdate',] 
     char operation[32]; // [button< name of button >Pressed, 
@@ -289,194 +308,190 @@ void IRAM_ATTR Buttons() {
 
 }
 
-/*variables buttons*/
 
-int EQuipmentOn = false;
+
 int ARROW_VALUE = 3;
-int SPEED = 0;
 int COUNTER_ARROW_POSITION = 0;
-int SECONDS=0;
-int RUNNING_TIMER=false;
-int RESET = false;
-int DONE = false;
-int DIMMER = 0;
 
 
 void sender_helper(String message_name, String operation, float currentValue, bool currentLevel){
- // Set values to send
-    strcpy(myData.messageName, message_name.c_str());
+  // In charge of sending triggers to the premise system. 
+  // Set values to send
+  strcpy(myData.messageName, message_name.c_str());
   strcpy(myData.operation, operation.c_str());
   myData.currentValue = currentValue;
   myData.currentLevel = currentLevel;
 
-    // Send message via ESP-NOW
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-}
-
-void Equipment_on() {
-  digitalWrite(pin_buttonEqOnLed, HIGH);
-  digitalWrite(pin_buttonEqOffLed, LOW);
-
-  EQuipmentOn =true;
-  Serial.println("Equipment_on pressed!");
-
-  // Set values to send
-  strcpy(myData.messageName, "status");   strcpy(myData.operation, "Equipment_on");
-  myData.currentValue = 0.0;              myData.currentLevel = EQuipmentOn;
   // Send message via ESP-NOW
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-    
-  if (result == ESP_OK) {
-    Serial.println("Sent with success");
+}
+
+void button_Equipment_on() {
+  Serial.println("Equipment on pressed!");
+  sender_helper("status", "EquipmentOn", 0, true);
+}
+
+void button_Equipment_off() {
+  Serial.println("Equipment off pressed!");
+  sender_helper("status", "EquipmentOn", 0, false);
+}
+
+void button_TROn() {
+  if (EQUIPMENT_ON) {
+    Serial.println("button treadmill On pressed");
+    sender_helper("status", "TreadmillOn", 0, true);
   }
 }
 
-void Equipment_off() {
-  digitalWrite(pin_buttonEqOffLed, HIGH);
-  digitalWrite(pin_buttonEqOnLed, LOW);
-
-  // shut all down
-  EQuipmentOn = false;
-  RUNNING_TIMER =false;
-  SECONDS=0;
-  // all buttons off:
-  digitalWrite(pin_buttonPumpOffLed, HIGH); 
-  digitalWrite(pin_buttonStopResetLed, HIGH);
-
-  digitalWrite(pin_buttonStartLed, LOW); 
-  digitalWrite(pin_buttonEqOnLed, LOW); 
-  digitalWrite(pin_buttonPumpOnLed, LOW); 
-  digitalWrite(pin_dimmScreen, LOW); 
-
-  // Set values to send
-  strcpy(myData.messageName, "status");   strcpy(myData.operation, "Equipment_on");
-  myData.currentValue = 0.0;              myData.currentLevel = EQuipmentOn;
-  // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-    
-  if (result == ESP_OK) {
-    Serial.println("Sent with success");
-  }
-    Serial.println("Equipment_off pressed!");
-
-}
-
-void buttonTROff() {
-  if (EQuipmentOn) {
-  digitalWrite(pin_buttonStopResetLed, HIGH);
-  digitalWrite(pin_buttonStartLed,  LOW);
-  Serial.println("buttonTROff pressed");
-  RUNNING_TIMER=false;
-
-      // Set values to send
-    strcpy(myData.messageName, "status");   strcpy(myData.operation, "TraidmilOn");
-    myData.currentValue =SECONDS;              myData.currentLevel = RUNNING_TIMER;
-    // Send message via ESP-NOW
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-      
-    if (result == ESP_OK) {
-      Serial.println("Sent with success");
-    }
-  }
-}
-
-void buttonTROffLongPress() {
-  if (EQuipmentOn) {
-    digitalWrite(pin_buttonStopResetLed, HIGH);
-    digitalWrite(pin_buttonStartLed,  LOW);
-    RESET  = true;
-    RUNNING_TIMER=false;
-    delay(2000);
-    Serial.println("buttonTROffLongPress pressed");
-  }
-}
-
-void buttonTROffLongPressStop(){
-  if (EQuipmentOn) {
-  digitalWrite(pin_buttonStopResetLed, LOW);
-  SECONDS = 0;
-  RESET  = false;
-  DONE = false;
-  sender_helper("status", "TraidmilOn", SECONDS, RUNNING_TIMER);
-  Serial.println("buttonTROffLongPressStop pressed");
-
-  }
-}
-
-void buttonTROn() {
-  if (EQuipmentOn) {
-    digitalWrite(pin_buttonStartLed,      HIGH);
-    digitalWrite(pin_buttonStopResetLed,  LOW);
-    RUNNING_TIMER=true;
-
-      // Set values to send
-    strcpy(myData.messageName, "status");   strcpy(myData.operation, "TraidmilOn");
-    myData.currentValue =SECONDS;              myData.currentLevel = RUNNING_TIMER;
-    // Send message via ESP-NOW
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
-      
-    if (result == ESP_OK) {
-      Serial.println("Sent with success");
-    }
-    Serial.println("buttonTROn pressed");
-
-  }
-}
-
-void buttonTROnLongPress() {
-  if (EQuipmentOn) {
+void button_TROnLongPress() {
+  if (EQUIPMENT_ON) {
     Serial.println("buttonTROnLongPress pressed");
+    sender_helper("status", "TreadmillOn", 0, true);
   }
 }
 
-void Punp_on() {
-  if (EQuipmentOn) {
-  digitalWrite(pin_buttonPumpOnLed, HIGH);
-  digitalWrite(pin_buttonPumpOffLed, LOW);
+void button_TROff() {
+  if (EQUIPMENT_ON) {
+      sender_helper("status", "TreadmillStop", 0, true);
+
+  }
+}
+
+void button_TROffLongPress() {
+  // Serial.println("button treadmill off Long Press pressed");
+  if (EQUIPMENT_ON) {
+    sender_helper("status", "TreadmillReset", 0, true);
+    RESET = true;
+  }
+}
+
+void button_TROffLongPressStop(){
+  // Serial.println("buttonTROffLongPressStop pressed");
+  if (EQUIPMENT_ON) {
+    delay(2000);
+    RESET = false;
+  }
+}
+
+void button_Pump_on() {
   Serial.println("Pump_on pressed!");
-
+  if (EQUIPMENT_ON) {
+    sender_helper("status", "PumpOn", 0, true);
   }
 }
 
-void Pump_off() {
-  if (EQuipmentOn) {
-  digitalWrite(pin_buttonPumpOffLed, HIGH);
-  digitalWrite(pin_buttonPumpOnLed, LOW);
-
+void button_Pump_off() {
   Serial.println("pump_off pressed!");
+  if (EQUIPMENT_ON) {
+    sender_helper("status", "PumpOn", 0, false);
   }
 }
 
-void liftUpLongPress(){
-  if (EQuipmentOn) {
-  ARROW_VALUE =1;
-  COUNTER_ARROW_POSITION +=1;
-  sender_helper("status", "SpeedUP", 0, true);
+void button_liftUpLongPress(){
+  if (EQUIPMENT_ON) {
+    ARROW_VALUE =1;
+    COUNTER_ARROW_POSITION +=1;
+    sender_helper("status", "SpeedUP", 0, true); // TODO: change to LiftUP
   }
 }
 
-void lowerDownLongPress(){
-  if (EQuipmentOn) {
-  ARROW_VALUE=-1;
-  COUNTER_ARROW_POSITION -=1;
-  sender_helper("status", "SpeedRev", 0, true);
+void button_lowerDownLongPress(){
+  if (EQUIPMENT_ON) {
+    ARROW_VALUE=-1;
+    COUNTER_ARROW_POSITION -=1;
+    sender_helper("status", "SpeedRev", 0, true); // TODO: change to LiftRev
   }
 }
 
-void liftUpRelease(){
-  if (EQuipmentOn) {
-  Serial.print("releaseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee!!!!!____>>>>>");
+void button_liftUpRelease(){
+  if (EQUIPMENT_ON) {
   ARROW_VALUE=3;
-  sender_helper("status", "SpeedStop", 0, true);
+  sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
 
-void lowerDownRelease(){
-  if (EQuipmentOn) {
+void button_lowerDownRelease(){
+  if (EQUIPMENT_ON) {
   ARROW_VALUE=3;
-    sender_helper("status", "SpeedStop", 0, true);
+  sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
+
+
+
+
+/*
+###################################################################################################
+###################################### FUNCTIONALITY- STATUS  #####################################
+###################################################################################################
+*/
+
+
+void EquipmentOn_status(bool val){
+  Serial.print("EquipmentOn_status:    "); Serial.print(val);
+  if (EQUIPMENT_ON == val){return;}
+  else{
+    EQUIPMENT_ON = val;
+    if (val){
+      digitalWrite(pin_buttonEqOnLed, HIGH);
+      digitalWrite(pin_buttonEqOffLed, LOW);
+    }
+    else {
+      digitalWrite(pin_buttonEqOffLed, HIGH);
+      digitalWrite(pin_buttonPumpOffLed, HIGH); 
+      digitalWrite(pin_buttonStopResetLed, HIGH);
+
+      digitalWrite(pin_buttonEqOnLed, LOW);
+      digitalWrite(pin_buttonStartLed, LOW); 
+      digitalWrite(pin_buttonPumpOnLed, LOW); 
+    }
+  }
+}
+
+void TreadmillOn_status(bool val){
+  Serial.print("  TreadmillOn_status:    "); Serial.print(val);
+  if (EQUIPMENT_ON) {
+    if (TREADMILL_ON == val){return;}
+    else {
+      TREADMILL_ON = val;
+      if (val){
+      digitalWrite(pin_buttonStartLed,      HIGH);
+      digitalWrite(pin_buttonStopResetLed,  LOW);
+      }
+      else{
+        digitalWrite(pin_buttonStartLed,      LOW);
+        digitalWrite(pin_buttonStopResetLed,  HIGH);
+      }
+    }
+  }else{
+    digitalWrite(pin_buttonStartLed,      LOW);
+    digitalWrite(pin_buttonStopResetLed,  HIGH);
+  }
+}
+
+void PunpOn_status(bool val){
+  Serial.print(" PunpOn_status:    "); Serial.println(val);
+  if (EQUIPMENT_ON) {
+    if (PUMP_ON == val){}
+    else {
+      PUMP_ON = val;
+      if (val){
+        digitalWrite(pin_buttonPumpOnLed, HIGH);
+        digitalWrite(pin_buttonPumpOffLed, LOW);
+      }
+      else{
+        digitalWrite(pin_buttonPumpOnLed, LOW);
+        digitalWrite(pin_buttonPumpOffLed, HIGH);
+      }
+    }
+  }else{
+      digitalWrite(pin_buttonPumpOnLed, LOW);
+      digitalWrite(pin_buttonPumpOffLed, HIGH);
+  }
+}
+
+
+
 
 
 /*
@@ -491,13 +506,6 @@ void ScreenBrightnessHandler() {
   while(true){
     DIMMER =  map(analogRead(pin_dimmScreen), 0, 4095, 150, 255);
     delay(50);
-  }
-}
-
-void StopperHandler(void* pvParameter) {
-  while (true) {
-    if (RUNNING_TIMER){ SECONDS+=1; delay(1000);}
-    else {delay(100);} // Update every 100ms
   }
 }
 
@@ -531,7 +539,7 @@ typedef struct {
   uint8_t payload[0]; /* network data ended with 4 bytes csum (CRC32) */
 } wifi_ieee80211_packet_t;
 
-
+// RSSI connection signal.
 void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
     // All espnow traffic uses action frames which are a subtype of the mgmnt frames so filter out everything else.
     if (type != WIFI_PKT_MGMT)
@@ -555,7 +563,6 @@ void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
             if (element_id == 0xDD && element_length >= 3 && memcmp(payload + 2, ESPRESSIF_OUI, 3) == 0) {
                 RSSI_SIGNAL = ppkt->rx_ctrl.rssi;
                 LAST_PATCKET_RSST_TIME = millis();
-                // Serial.println(RSSI_SIGNAL);
                 break;
             }
 
@@ -564,38 +571,28 @@ void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
     }
 }
 
-
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-   Serial.print("\r\nLast Packet Send Status:\t");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+  //  Serial.print("\r\nLast Packet Send Status:\t");
+  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
 unsigned long lastStatusReceivedTime = 0;
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
-   memcpy(&myData, incomingData, sizeof(myData));
-    Serial.println("getting data!");
+  memcpy(&myData, incomingData, sizeof(myData));
 
   // Check if myData.a is equal to "signal Testing"
   if (strcmp(myData.messageName, "signal") == 0) {
-        Serial.print("----------->");
-        Serial.print(myData.currentLevel);
+        SPEED = myData.currentValue;
         lastStatusReceivedTime = millis(); // Update the timestamp of the last status received
-        SPEED = myData.currentValue ;
   } 
-  if (strcmp(myData.messageName, "status") == 0){
-    Serial.print("operation: ");
-    Serial.println(myData.operation);
-    if      (strcmp(myData.operation, "Equipment_on") == 0) {Equipment_on();}
-    else if (strcmp(myData.operation, "Equipment_off") == 0){Equipment_off();}
-    else if (strcmp(myData.operation, "TraidmilOn") == 0) {buttonTROn();}
-    else if (strcmp(myData.operation, "TraidmilOff") == 0) {buttonTROff();}
-    else if (strcmp(myData.operation, "Pump_on") == 0) {Punp_on();}
-    else if (strcmp(myData.operation, "Pump_off") == 0) {Pump_off();}
-    else if (strcmp(myData.operation, "liftUp") == 0) {liftUpLongPress();liftUpRelease();}
-    else if (strcmp(myData.operation, "liftDown") == 0) {lowerDownLongPress(); lowerDownRelease();}
+  else if (strcmp(myData.messageName, "timer") == 0)          {SECONDS = myData.currentValue;}
+  else if (strcmp(myData.messageName, "status") == 0){
+    if      (strcmp(myData.operation, "Equipment_on")   == 0)    {EquipmentOn_status(myData.currentLevel);}
+    else if (strcmp(myData.operation, "Treadmill_On")   == 0)    {TreadmillOn_status(myData.currentLevel);}
+    else if (strcmp(myData.operation, "Pump_On")        == 0)    {PunpOn_status(myData.currentLevel);}
+    else if (strcmp(myData.operation, "Time_Out")   == 0)        {DONE= myData.currentLevel;}
 
   }
-  // Check if the last status was not received within the timeout
 }  
 
 
@@ -661,36 +658,34 @@ void setup(void) {
   attachInterrupt(digitalPinToInterrupt(pin_buttonLift), Buttons, FALLING);
   attachInterrupt(digitalPinToInterrupt(pin_buttonLower), Buttons, FALLING);
 
-  button_1_buttonStopReset.attachClick(buttonTROff);
-  button_1_buttonStopReset.attachLongPressStart(buttonTROffLongPress);
+  button_1_buttonStopReset.attachClick(button_TROff);
+  button_1_buttonStopReset.attachLongPressStart(button_TROffLongPress);
   button_1_buttonStopReset.setPressTicks(2000);
   button_1_buttonStopReset.setClickTicks(60);
-  button_1_buttonStopReset.attachLongPressStop(buttonTROffLongPressStop);
+  button_1_buttonStopReset.attachLongPressStop(button_TROffLongPressStop);
 
-  button_2_buttonEqOn.attachClick(Equipment_on);
-  button_3_buttonEqOff.attachClick(Equipment_off);
-  button_4_buttonPumpOn.attachClick(Punp_on);
-  button_5_buttonPumpOff.attachClick(Pump_off);
+  button_2_buttonEqOn.attachClick(button_Equipment_on);
+  button_3_buttonEqOff.attachClick(button_Equipment_off);
+  button_4_buttonPumpOn.attachClick(button_Pump_on);
+  button_5_buttonPumpOff.attachClick(button_Pump_off);
 
-  button_6_buttonStart.attachClick(buttonTROn);
+  button_6_buttonStart.attachClick(button_TROn);
   button_6_buttonStart.setPressTicks(300);	
-  button_6_buttonStart.attachDuringLongPress(buttonTROnLongPress);
+  button_6_buttonStart.attachDuringLongPress(button_TROnLongPress);
 
-  button_7_buttonLift.attachClick(liftUpLongPress);
-  button_7_buttonLift.attachDuringLongPress(liftUpLongPress);  
+  button_7_buttonLift.attachClick(button_liftUpLongPress);
+  button_7_buttonLift.attachDuringLongPress(button_liftUpLongPress);  
   button_7_buttonLift.setPressTicks(0);	
-  button_7_buttonLift.attachLongPressStop(liftUpRelease);
+  button_7_buttonLift.attachLongPressStop(button_liftUpRelease);
 
-  button_8_buttonLower.attachClick(lowerDownLongPress);
-  button_8_buttonLower.attachDuringLongPress(lowerDownLongPress);
+  button_8_buttonLower.attachClick(button_lowerDownLongPress);
+  button_8_buttonLower.attachDuringLongPress(button_lowerDownLongPress);
   button_8_buttonLower.setPressTicks(0);	
-  button_8_buttonLower.attachLongPressStop(lowerDownRelease);
+  button_8_buttonLower.attachLongPressStop(button_lowerDownRelease);
 
   ////////////////// Processes configurations ------------------------------------------------------------------
-  xTaskCreatePinnedToCore((TaskFunction_t)&StopperHandler, "StopperHandler", 4096, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 4096, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&ScreenBrightnessHandler, "screenDimmer", 2048, NULL, 1, NULL, 1);
-  
  }
 
  
@@ -700,10 +695,10 @@ void setup(void) {
 ###################################################################################################
 */
 void loop(void) {
+  delay(10);
   /*Configuration of variables end cases */
   if (SPEED > 100) { SPEED = 100; } else if (SPEED <= 0)  { SPEED = 0;}
   if (COUNTER_ARROW_POSITION > 30) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION < 0)  { COUNTER_ARROW_POSITION = 30;}
-  if (SECONDS >= 1800) {DONE = true; SECONDS=0; RUNNING_TIMER=false; Serial.println("over time done!");}
   if (millis() - LAST_PATCKET_RSST_TIME > 1000) { RSSI_SIGNAL = -100;  LAST_PATCKET_RSST_TIME = millis();  } 
   if (millis() - lastStatusReceivedTime > 500) { Serial.println("not getting status!"); }
 
@@ -719,6 +714,6 @@ void loop(void) {
       DrawResetTimmer(RESET);
       DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
       DrawDone(DONE) ;    
-      DrawEquepmentOn(EQuipmentOn);
+      DrawEquepmentOn(EQUIPMENT_ON);
     } while (u8g2.nextPage());
 }
