@@ -30,12 +30,6 @@ U8G2_ST7567_ENH_DG128064I_F_SW_I2C u8g2(U8G2_R2, 2, 15, U8X8_PIN_NONE);
 
 
 
-
-
-
-
-
-
 /*
 ###################################################################################################
 ###################################### SCRIPT VARIABLES ###########################################
@@ -45,18 +39,16 @@ U8G2_ST7567_ENH_DG128064I_F_SW_I2C u8g2(U8G2_R2, 2, 15, U8X8_PIN_NONE);
 
 int EQUIPMENT_ON = false;
 int TREADMILL_ON = false;
-int PUMP_ON = false;
+bool PUMP_ON = false;
 int SPEED = 0;
 int SECONDS=0;
-int RUNNING_TIMER=false;
-int RESET = false;
-int DONE = false;
+bool RUNNING_TIMER=false;
+bool RESET = false;
+bool DONE = false;
 int DIMMER = 0;
 
-
-
-
-
+bool CHARGING = false;
+int BATTERY_PER = 0; 
 
 /*
 ###################################################################################################
@@ -72,26 +64,22 @@ long BatteryReadingInterval = 1000; // Time interval for reading battery voltage
 float battery_voltage=4100;
 int RSSI_SIGNAL=-100;
 unsigned long LAST_PATCKET_RSST_TIME = 0;
-bool CHARGING = false;
+
 
 void DrawBatteryGauge() {
   // Read battery voltage every BatteryReadingInterval ms
   if (millis() - TimeWaitBeforeReading_bat > BatteryReadingInterval) {
     battery_voltage = Battery.readVoltage();
     soc = Battery.readPercentage();
-    //  Serial.println("battery voltage:    ");
-    //  Serial.println("");
-    //  Serial.print(battery_voltage);
-    //  Serial.println("battery percentage:   ");
-    //  Serial.println("");
-    //  Serial.print(soc);
     TimeWaitBeforeReading_bat = millis();
   }
 
-  if (battery_voltage > 4100){ battery_voltage = 4100; } // highest value of battery
+  if (battery_voltage > 4100){ battery_voltage = 4100; CHARGING=true;}; // highest value of battery
+  if (battery_voltage < 4090) {CHARGING=false;};
+
   if (battery_voltage < 3000){ battery_voltage = 3000; } // lowest value of battery
 
-  int battery_percentage = map(battery_voltage, 3000, 4100, 0, 100);
+  BATTERY_PER = map(battery_voltage, 3000, 4100, 0, 100);
 
   int x = 1;
   int y = 4;
@@ -102,23 +90,23 @@ void DrawBatteryGauge() {
   int batteryHeight = height - 4;
   int batteryX = x + 2;
   int batteryY = y + 2;
-  int batteryPercentageHeight = (batteryHeight * battery_percentage) / 100;
+  int batteryPercentageHeight = (batteryHeight * BATTERY_PER) / 100;
   
   // Draw the battery frame
   u8g2.drawFrame(x, y, width, height);
   u8g2.drawFrame(x+width, y+(height/2)-2, 3, 6);
 
   // Draw the battery fill
-  u8g2.drawBox(batteryX, batteryY, (batteryWidth * battery_percentage) / 100, batteryHeight);
+  u8g2.drawBox(batteryX, batteryY, (batteryWidth * BATTERY_PER) / 100, batteryHeight);
 }
 
 /******RSSI******/
 void DrawRSSIFrames(){
     int i = 0;
-    u8g2.drawFrame(35,  11, 3,  4 );
-    u8g2.drawFrame(32,  8,  3,  7 );
-    u8g2.drawFrame(29,  5,  3,  10);
-    u8g2.drawFrame(26,  2,  3,  13);
+    u8g2.drawFrame(58,  11, 3,  4 );
+    u8g2.drawFrame(55,  8,  3,  7 );
+    u8g2.drawFrame(52,  5,  3,  10);
+    u8g2.drawFrame(49,  2,  3,  13);
   
 }
 
@@ -132,7 +120,7 @@ void DrawRSSIGauge(int rssi_signal) {
   else if ( (rssi_signal <  -70))                           {number_bars=0;}
   int bar_width = 2;
   int bar_margin = 1;
-  int x = 36;
+  int x = 59;
   // Serial.println(rssi_signal);
   if (number_bars==0){ u8g2.setFont(u8g2_font_6x10_mf); u8g2.setCursor(34,6); u8g2.print("x"); }
   
@@ -169,12 +157,10 @@ void DrawSpeedGauge(int speed) {
   u8g2.drawLine(x + 1, y, xp, yp);
   
   u8g2.setFont(u8g2_font_6x10_tr);
-
-  int speed_text_x = x-r-(6*5)-(6*4);
-  int speed_val_x = x-r-(6*3);
-  u8g2.drawStr(speed_text_x, y, "Speed:");
-  u8g2.setCursor(speed_val_x,y);
+  u8g2.setCursor(101,25);
   u8g2.print(speed);
+  u8g2.drawStr(113, 25, "%");
+
 }
 
 /******Stopper******/
@@ -236,13 +222,24 @@ void DrawEquepmentOn(bool equipmentOn){
 
 void DrawChargingSymbol(bool charge){
   if (charge){
+    u8g2.setFont(u8g2_font_unifont_t_77);
+    u8g2.drawGlyph(28, 13, 0x26a1);  // Unicode snowman
+  }
+  else{
     u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.setCursor(20, 25);
-    u8g2.print("CH");
-  } 
+    u8g2.setCursor(25,13);
+    u8g2.print(BATTERY_PER);
+    u8g2.setCursor(37,13);
+    u8g2.print("%");
+  }
 }
 
-
+void DrawPumpSymbol(bool pump_working){
+if (PUMP_ON){
+    u8g2.setFont(u8g2_font_unifont_t_86);
+    u8g2.drawGlyph(68, 14, 0x2b59);  // Unicode snowman
+  }
+}
 
 /*
 ###################################################################################################
@@ -615,47 +612,29 @@ void LogicsHandler(){
   }
 }
 
-float last_soc = 0.0;
-float getStateOfCharge() {
-    Wire.beginTransmission(MAX17043_I2C_ADDRESS);
-    Wire.write(0x04);  // Register address for SOC
-    Wire.endTransmission();
 
-    Wire.requestFrom(MAX17043_I2C_ADDRESS, 2);
-    if(Wire.available()) {
-        uint8_t msb = Wire.read();  // read the most significant byte
-        uint8_t lsb = Wire.read();  // read the least significant byte
+/*                         
+int  lowest_memory_usage = 9999999;
+int  highest_memory_usage = 0;
+void MemoryCheck(){
+  while(true){
+    Serial.print("lowest memory usage: "); Serial.print(lowest_memory_usage);
+    Serial.print("   highest memory usage: "); Serial.print(highest_memory_usage);
 
-        // The most significant byte represents the integer part of the SOC
-        // The least significant byte represents the decimal part of the SOC
-        float soc = msb + (lsb / 256.0f);
-        return soc;
+    int current_memory = ESP.getFreeHeap();
+    Serial.print("   current memory usage: "); Serial.println(current_memory);
+
+    if (current_memory < lowest_memory_usage){
+      lowest_memory_usage = current_memory;
     }
-    else {
-        // If we were unable to read the SOC, return a negative value to indicate an error
-        return -1.0f;
-    }
-}
-void ChargingHandler(){
-    while(true){
-    // Request state of charge from MAX17043
-    float soc = getStateOfCharge();
-    Serial.print("current soc: "); Serial.print(soc); Serial.print("  last soc: "); Serial.println(last_soc); 
-    // Compare with the last state of charge
-    if(soc > last_soc) {
-        CHARGING=true;
-    }
-    else if(soc < last_soc) {
-        CHARGING = false;
-    }
-    else {}
     
-    // Save the current state of charge for the next comparison
-    last_soc = soc;
-
-    delay(100);
+    if (current_memory > highest_memory_usage){
+      highest_memory_usage = current_memory;
+    }
+    delay(50000);
   }
 }
+**/
 
 /*
 ###################################################################################################
@@ -747,9 +726,13 @@ void setup(void) {
   ////////////////// Processes configurations ------------------------------------------------------------------
   xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 4096, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&ScreenBrightnessHandler, "screenDimmer", 2048, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 1024, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore((TaskFunction_t)&ChargingHandler, "ChargingHandler", 1024, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 2048, NULL, 1, NULL, 1);
+  // xTaskCreatePinnedToCore((TaskFunction_t)&MemoryCheck, "MemoryCheck", 1024, NULL, 1, NULL, 1);
 
+  // initialize leds as off.!
+  digitalWrite(pin_buttonEqOffLed, HIGH);
+  digitalWrite(pin_buttonPumpOffLed, HIGH); 
+  digitalWrite(pin_buttonStopResetLed, HIGH);
 
  }
 
@@ -760,22 +743,37 @@ void setup(void) {
 ###################################################################################################
 */
 void loop(void) {
-  delay(10);
+  u8g2.clearBuffer();  // Clear the display buffer
+  u8g2.setContrast(DIMMER);
+  DrawSpeedGauge(SPEED);
+  DrawStopper(SECONDS);
+  DrawBatteryGauge();
+  DrawRSSIFrames();
+  DrawRSSIGauge(RSSI_SIGNAL); 
+  DrawResetTimmer(RESET);
+  DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
+  DrawDone(DONE) ;    
+  DrawChargingSymbol(CHARGING) ;  
+  DrawPumpSymbol(PUMP_ON);
+  DrawEquepmentOn(EQUIPMENT_ON);
+  u8g2.sendBuffer();  // Send the buffer to the display
+  delay(200);  // Delay for 1 second before clearing the display
+  u8g2.clearBuffer();  // Clear the display buffer again
 
 
-  /*Drawing pages*/
-  u8g2.firstPage();
-    do {
-      u8g2.setContrast(DIMMER);
-      DrawSpeedGauge(SPEED);
-      DrawStopper(SECONDS);
-      DrawBatteryGauge();
-      DrawRSSIFrames();
-      DrawRSSIGauge(RSSI_SIGNAL); 
-      DrawResetTimmer(RESET);
-      DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
-      DrawDone(DONE) ;    
-      DrawChargingSymbol(true) ;    
-      DrawEquepmentOn(EQUIPMENT_ON);
-    } while (u8g2.nextPage());
+  // /*Drawing pages*/
+  // u8g2.firstPage();
+  //   do {
+  //     u8g2.setContrast(DIMMER);
+  //     DrawSpeedGauge(SPEED);
+  //     DrawStopper(SECONDS);
+  //     DrawBatteryGauge();
+  //     DrawRSSIFrames();
+  //     DrawRSSIGauge(RSSI_SIGNAL); 
+  //     DrawResetTimmer(RESET);
+  //     DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
+  //     DrawDone(DONE) ;    
+  //     DrawChargingSymbol(true) ;    
+  //     DrawEquepmentOn(EQUIPMENT_ON);
+  //   } while (u8g2.nextPage());
 }
