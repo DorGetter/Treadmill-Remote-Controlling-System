@@ -8,6 +8,7 @@ uint8_t broadcastAddress[] = {0xEC, 0x62, 0x60, 0x77, 0x7A, 0xFC}; // Second ESP
 #include <WiFi.h>
 #include <ESP32MX1508.h> // Motor Driver lib
 
+#include <Adafruit_ADS1X15.h>
 
 
 /*
@@ -46,13 +47,12 @@ uint8_t broadcastAddress[] = {0xEC, 0x62, 0x60, 0x77, 0x7A, 0xFC}; // Second ESP
 #define CH1 0                   // 16 Channels (0-15) are availible
 #define CH2 1  
 
-#define pin_potenziometer 32
+#define pin_potenziometer 36
 
 MX1508 motor(pin_Motor_L, pin_Motor_R, CH1, CH2);
+// Adafruit_ADS1015 ads;  /* Use this for the 16-bit version */
 
-
-
-
+Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 
 
 
@@ -170,8 +170,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     // else if (strcmp(myData.operation, "LiftRev") == 0)   {motor.motorRev(255); }
     // else if (strcmp(myData.operation, "LiftStop") == 0)  {motor.motorBrake();  }
 
-    else if (strcmp(myData.operation, "SpeedUP") == 0)    {motor.motorGo(255);  }
-    else if (strcmp(myData.operation, "SpeedRev") == 0)   {motor.motorRev(255); }
+    else if (strcmp(myData.operation, "SpeedUP") == 0)    {if (SPEED < 99) {motor.motorGo(255);} else {motor.motorBrake();}  }
+    else if (strcmp(myData.operation, "SpeedRev") == 0)   {if (SPEED > 0 ) {motor.motorRev(255);} else {motor.motorBrake();} }
     else if (strcmp(myData.operation, "SpeedStop") == 0)  {motor.motorBrake();  }
 
     
@@ -236,8 +236,9 @@ void StopperHandler(void* pvParameter) {
 
 
 int __mapPotenziometerValue__(int input) {
-  int inputMin = 0;     // Minimum input value
-  int inputMax = 1570;  // Maximum input value
+  Serial.println(input);
+  int inputMin = -175;     // Minimum input value
+  int inputMax = 17690;  // Maximum input value
   int outputMin = 0;    // Minimum output value
   int outputMax = 100;  // Maximum output value
 
@@ -246,7 +247,7 @@ int __mapPotenziometerValue__(int input) {
 }
 void GetAnalogValue(){
   while(true){
-    SPEED = __mapPotenziometerValue__(analogRead(pin_potenziometer));
+    SPEED = __mapPotenziometerValue__(ads.readADC_SingleEnded(0));
     delay(200);
   }
 }
@@ -315,9 +316,15 @@ void setup() {
   // AnalogRead Pot;
   pinMode(pin_potenziometer, INPUT);
   analogSetPinAttenuation(pin_potenziometer, ADC_6db);
-  analogReadResolution(16);
+  analogReadResolution(12);
 
-  xTaskCreatePinnedToCore((TaskFunction_t)&GetAnalogValue,                "GetAnalogValue",                 1024, NULL, 1, NULL, 0);
+  Wire.begin(32,33);
+  if (!ads.begin()) {
+    Serial.println("Failed to initialize ADS.");
+    while (1);
+  }
+
+  xTaskCreatePinnedToCore((TaskFunction_t)&GetAnalogValue,                "GetAnalogValue",                 4096, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore((TaskFunction_t)&GetLedAndButtonsStatus,        "GetLedAndButtonsStatus",         4096, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore((TaskFunction_t)&SendConnectionSignalAndStatus, "SendConnectionSignalAndStatus",  4096, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore((TaskFunction_t)&SendSignalAndSpeed,            "SendSignalAndSpeed",             4096, NULL, 1, NULL, 0);
@@ -326,16 +333,37 @@ void setup() {
 }
 
 
+// Global variables
+int end_time = 1800;
+int startDecreaseSeconds = end_time - 20;
 
 void loop() {
-
-  if (SECONDS >= 1800)          {DONE = true;   sender_helper("status", "Time_Out",0,DONE); equipmentOnTrigger(false);}
-  if (EQUIPMENT_ON_LED && DONE) {DONE = false;  sender_helper("status", "Time_Out",0,DONE);}
-
-  Serial.print("eq: ");Serial.print(EQUIPMENT_ON_LED);Serial.print("   ter: ");Serial.print(TREADMILL_ON_LED);
-  Serial.print("   pu: ");Serial.print(PUMP_ON_LED); ;Serial.print("   seconds: ");Serial.print(SECONDS);   
-  Serial.print("  DONE  "); Serial.println(DONE);
-
-  delay(500);
+  if ((SECONDS >= startDecreaseSeconds) ||  (DONE == true)) {
+    decreasePotentiometer();
+  }
+  if (SECONDS >= end_time) {DONE = true;  RUNNING_TIMER=false; SECONDS=0; sender_helper("status", "Time_Out",0,DONE); treadmillOnTrigger(false);   delay(600);}
   
+  if (TREADMILL_ON_LED && DONE) {DONE = false;  sender_helper("status", "Time_Out",0,DONE);}
+
+    // Serial.print("eq: ");Serial.print(EQUIPMENT_ON_LED);Serial.print("   ter: ");Serial.print(TREADMILL_ON_LED);
+  // Serial.print("   pu: ");Serial.print(PUMP_ON_LED); ;Serial.print("   seconds: ");Serial.print(SECONDS);   
+  // Serial.print("  TREADMILL_ON_LED  "); Serial.print(TREADMILL_ON_LED);
+  // Serial.print("  DONE  "); Serial.println(DONE);
+  
+}
+
+
+
+void motor_dec(int sp){
+  motor.motorRev(sp);
+  motor.motorBrake();
+}
+void decreasePotentiometer() {
+  if (SPEED > 0){
+    if      ( SPEED <= 16  )    { motor_dec(50);}
+    else if ( SPEED <= 32  )    { motor_dec(91);}
+    else if ( SPEED <= 48 )     { motor_dec(132);}
+    else if ( SPEED <= 64 )     { motor_dec(220);}
+    else if ( SPEED <= 100 )    { motor_dec(255);}
+  }
 }

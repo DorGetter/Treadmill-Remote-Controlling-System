@@ -62,6 +62,7 @@ double soc = 0;  // Variable to keep track of LiPo state-of-charge (SOC)
 long TimeWaitBeforeReading_bat = 0;
 long BatteryReadingInterval = 1000; // Time interval for reading battery voltage
 float battery_voltage=4100;
+float battery_voltage_charge = 0;
 int RSSI_SIGNAL=-100;
 unsigned long LAST_PATCKET_RSST_TIME = 0;
 
@@ -70,16 +71,18 @@ void DrawBatteryGauge() {
   // Read battery voltage every BatteryReadingInterval ms
   if (millis() - TimeWaitBeforeReading_bat > BatteryReadingInterval) {
     battery_voltage = Battery.readVoltage();
-    soc = Battery.readPercentage();
+    battery_voltage_charge = Battery.readVoltage();
+    // soc = Battery.readPercentage();
     TimeWaitBeforeReading_bat = millis();
   }
 
-  if (battery_voltage > 4100){ battery_voltage = 4100; CHARGING=true;}; // highest value of battery
-  if (battery_voltage < 4090) {CHARGING=false;};
+  if (battery_voltage_charge > 4180){CHARGING=true;}
+  else {CHARGING=false;}
 
+  if (battery_voltage > 4150){ battery_voltage = 4150;}; // highest value of battery
   if (battery_voltage < 3000){ battery_voltage = 3000; } // lowest value of battery
 
-  BATTERY_PER = map(battery_voltage, 3000, 4100, 0, 100);
+  BATTERY_PER = map(battery_voltage, 3000, 4150, 0, 100);
 
   int x = 1;
   int y = 4;
@@ -98,6 +101,11 @@ void DrawBatteryGauge() {
 
   // Draw the battery fill
   u8g2.drawBox(batteryX, batteryY, (batteryWidth * BATTERY_PER) / 100, batteryHeight);
+
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setCursor(50, 25);
+    u8g2.print(battery_voltage_charge);
+
 }
 
 /******RSSI******/
@@ -122,7 +130,7 @@ void DrawRSSIGauge(int rssi_signal) {
   int bar_margin = 1;
   int x = 59;
   // Serial.println(rssi_signal);
-  if (number_bars==0){ u8g2.setFont(u8g2_font_6x10_mf); u8g2.setCursor(34,6); u8g2.print("x"); }
+  if (number_bars==0){ u8g2.setFont(u8g2_font_6x10_mf); u8g2.setCursor(57,6); u8g2.print("x"); }
   
   for (int i = 0; i < number_bars; i++) { 
     u8g2.drawLine(x, 13, x, 13 - (i+1)*3);
@@ -207,7 +215,7 @@ void DrawDone(bool done){
   if (done){
     u8g2.setFont(u8g2_font_inr24_mf);
     u8g2.setCursor(2, 56);
-    u8g2.print("END !"); 
+    u8g2.print("END!"); 
   }
 }
 
@@ -226,18 +234,18 @@ void DrawChargingSymbol(bool charge){
     u8g2.drawGlyph(28, 13, 0x26a1);  // Unicode snowman
   }
   else{
-    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setFont(u8g2_font_5x7_tr);
     u8g2.setCursor(25,13);
     u8g2.print(BATTERY_PER);
-    u8g2.setCursor(37,13);
+    u8g2.setCursor(40,13);
     u8g2.print("%");
   }
 }
 
 void DrawPumpSymbol(bool pump_working){
-if (PUMP_ON){
+  if (PUMP_ON){
     u8g2.setFont(u8g2_font_unifont_t_86);
-    u8g2.drawGlyph(68, 14, 0x2b59);  // Unicode snowman
+    u8g2.drawGlyph(68, 16, 0x2b59);  // Unicode snowman
   }
 }
 
@@ -724,9 +732,9 @@ void setup(void) {
   button_8_buttonLower.attachLongPressStop(button_lowerDownRelease);
 
   ////////////////// Processes configurations ------------------------------------------------------------------
-  xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 4096, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 8192, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&ScreenBrightnessHandler, "screenDimmer", 2048, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 2048, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 4096, NULL, 1, NULL, 1);
   // xTaskCreatePinnedToCore((TaskFunction_t)&MemoryCheck, "MemoryCheck", 1024, NULL, 1, NULL, 1);
 
   // initialize leds as off.!
@@ -742,38 +750,29 @@ void setup(void) {
 ########################################## LOOP ###################################################
 ###################################################################################################
 */
-void loop(void) {
+void loop(void) {  
   u8g2.clearBuffer();  // Clear the display buffer
+ 
   u8g2.setContrast(DIMMER);
   DrawSpeedGauge(SPEED);
-  DrawStopper(SECONDS);
   DrawBatteryGauge();
   DrawRSSIFrames();
   DrawRSSIGauge(RSSI_SIGNAL); 
-  DrawResetTimmer(RESET);
   DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
-  DrawDone(DONE) ;    
   DrawChargingSymbol(CHARGING) ;  
   DrawPumpSymbol(PUMP_ON);
   DrawEquepmentOn(EQUIPMENT_ON);
+  if (DONE){
+    DrawDone(DONE) ;    
+  }
+  else if (RESET){
+    DrawResetTimmer(RESET);
+  }
+  else {
+  DrawStopper(SECONDS);
+  }
+  
   u8g2.sendBuffer();  // Send the buffer to the display
   delay(200);  // Delay for 1 second before clearing the display
   u8g2.clearBuffer();  // Clear the display buffer again
-
-
-  // /*Drawing pages*/
-  // u8g2.firstPage();
-  //   do {
-  //     u8g2.setContrast(DIMMER);
-  //     DrawSpeedGauge(SPEED);
-  //     DrawStopper(SECONDS);
-  //     DrawBatteryGauge();
-  //     DrawRSSIFrames();
-  //     DrawRSSIGauge(RSSI_SIGNAL); 
-  //     DrawResetTimmer(RESET);
-  //     DrawArrows(ARROW_VALUE, COUNTER_ARROW_POSITION);
-  //     DrawDone(DONE) ;    
-  //     DrawChargingSymbol(true) ;    
-  //     DrawEquepmentOn(EQUIPMENT_ON);
-  //   } while (u8g2.nextPage());
 }
