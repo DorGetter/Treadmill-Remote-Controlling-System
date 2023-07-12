@@ -1,6 +1,6 @@
 /*
 TODO:
-define pin_buttonPumpOffLed, pin_buttonEqOffLed
+SPEED BUTTONS CONFIGURATION!
 */
 
 #include <U8g2lib.h>
@@ -97,12 +97,10 @@ void DrawBatteryGauge() {
   // Draw the battery fill
   u8g2.drawBox(batteryX, batteryY, (batteryWidth * BATTERY_PER) / 100, batteryHeight);
 
-    u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.setCursor(50, 25);
-    u8g2.print(battery_voltage_charge);
-
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.setCursor(50, 25);
+  u8g2.print(battery_voltage_charge);
 }
-
 /******RSSI******/
 void DrawRSSIFrames(){
     int i = 0;
@@ -112,7 +110,6 @@ void DrawRSSIFrames(){
     u8g2.drawFrame(49,  2,  3,  13);
   
 }
-
 void DrawRSSIGauge(int rssi_signal) { 
   int number_bars;
   // int number_bars = map(rssi_display, -90, -10, 0, 4);  // map input value to number of bars
@@ -133,7 +130,6 @@ void DrawRSSIGauge(int rssi_signal) {
     x -= (bar_width + bar_margin);
   }
 }
-
 /******Speed******/
 void DrawSpeedGauge(int speed) {
   int x = 110; // Updated X-coordinate of the center of the gauge
@@ -165,7 +161,6 @@ void DrawSpeedGauge(int speed) {
   u8g2.drawStr(113, 25, "%");
 
 }
-
 /******Stopper******/
 void DrawStopper(int seconds) {
   int minutes = seconds / 60;
@@ -182,7 +177,6 @@ void DrawStopper(int seconds) {
   }
   u8g2.print(seconds);
 }
-
 /*RESET message*/
 void DrawResetTimmer(bool reset) {
   if (reset){
@@ -191,7 +185,6 @@ void DrawResetTimmer(bool reset) {
     u8g2.print("RESET"); 
     }
 }
-
 /******Up&Down Arrow******/
 void DrawArrows(int arrow_value, int arrow_position) {
   if (arrow_value == 1){
@@ -205,7 +198,6 @@ void DrawArrows(int arrow_value, int arrow_position) {
     else if ((arrow_position<=10)   &&  (arrow_position>=0))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 80);}  
   }
 }
-
 void DrawDone(bool done){
   if (done){
     u8g2.setFont(u8g2_font_inr24_mf);
@@ -213,7 +205,6 @@ void DrawDone(bool done){
     u8g2.print("END!"); 
   }
 }
-
 void DrawEquepmentOn(bool equipmentOn){
   if (equipmentOn){
     u8g2.setFont(u8g2_font_6x10_tr);
@@ -221,8 +212,6 @@ void DrawEquepmentOn(bool equipmentOn){
     u8g2.print("ON");
   } 
 }
-
-
 void DrawChargingSymbol(bool charge){
   if (charge){
     u8g2.setFont(u8g2_font_unifont_t_77);
@@ -236,7 +225,6 @@ void DrawChargingSymbol(bool charge){
     u8g2.print("%");
   }
 }
-
 void DrawPumpSymbol(bool pump_working){
   if (PUMP_ON){
     u8g2.setFont(u8g2_font_unifont_t_86);
@@ -420,7 +408,6 @@ void EquipmentOn_status(bool val){
     }
   }
 }
-
 void TreadmillOn_status(bool val){
   // Serial.print("  TreadmillOn_status:    "); Serial.print(val);
   if (EQUIPMENT_ON) {
@@ -441,7 +428,6 @@ void TreadmillOn_status(bool val){
     digitalWrite(pin_buttonStopResetLed,  HIGH);
   }
 }
-
 void PunpOn_status(bool val){
   // Serial.print(" PunpOn_status:    "); Serial.println(val);
   if (EQUIPMENT_ON) {
@@ -576,32 +562,6 @@ void LogicsHandler(){
     delay(75);
   }
 }
-
-
-/*                         
-int  lowest_memory_usage = 9999999;
-int  highest_memory_usage = 0;
-void MemoryCheck(){
-  while(true){
-    Serial.print("lowest memory usage: "); Serial.print(lowest_memory_usage);
-    Serial.print("   highest memory usage: "); Serial.print(highest_memory_usage);
-
-    int current_memory = ESP.getFreeHeap();
-    Serial.print("   current memory usage: "); Serial.println(current_memory);
-
-    if (current_memory < lowest_memory_usage){
-      lowest_memory_usage = current_memory;
-    }
-    
-    if (current_memory > highest_memory_usage){
-      highest_memory_usage = current_memory;
-    }
-    delay(50000);
-  }
-}
-**/
-
-
 
 /*
 ###################################################################################################
