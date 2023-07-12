@@ -25,11 +25,6 @@ define pin_buttonPumpOffLed, pin_buttonEqOffLed
 U8G2_ST7567_ENH_DG128064I_F_SW_I2C u8g2(U8G2_R2, 2, 15, U8X8_PIN_NONE);
  uint8_t broadcastAddress[] ={0x3C, 0x61, 0x05, 0x65, 0x03, 0x44};
 
-// uint8_t broadcastAddress[] = { 0x54, 0x43, 0xB2, 0xA9, 0x1E, 0x90 };  // first ESP
-// uint8_t broadcastAddress[] = {0xEC, 0x62, 0x60, 0x77, 0x7A, 0xFC}; // This MAC adress Remote System
-
-
-
 /*
 ###################################################################################################
 ###################################### SCRIPT VARIABLES ###########################################
@@ -303,30 +298,8 @@ OneButton button_7_buttonLift       (pin_buttonLift,      false);
 OneButton button_8_buttonLower      (pin_buttonLower,     false);
 
 
-
-
-/*** for timming of the switches (long press / short press) + the lib for the buttons ***/
-void IRAM_ATTR isr() {}
-void isr();
-
-void IRAM_ATTR Buttons() {
-  // include all buttons here to be checked
-  button_1_buttonStopReset.tick();  // just call tick() to check the state.
-  button_2_buttonEqOn.tick();
-  button_3_buttonEqOff.tick();
-  button_4_buttonPumpOn.tick();
-  button_5_buttonPumpOff.tick();
-  button_6_buttonStart.tick();
-  button_7_buttonLift.tick();
-  button_8_buttonLower.tick();
-
-}
-
-
-
 int ARROW_VALUE = 3;
 int COUNTER_ARROW_POSITION = 0;
-
 
 void sender_helper(String message_name, String operation, float currentValue, bool currentLevel){
   // In charge of sending triggers to the premise system. 
@@ -344,33 +317,28 @@ void button_Equipment_on() {
   Serial.println("Equipment on pressed!");
   sender_helper("status", "EquipmentOn", 0, true);
 }
-
 void button_Equipment_off() {
   Serial.println("Equipment off pressed!");
   sender_helper("status", "EquipmentOn", 0, false);
 }
-
 void button_TROn() {
   if (EQUIPMENT_ON) {
     Serial.println("button treadmill On pressed");
     sender_helper("status", "TreadmillOn", 0, true);
   }
 }
-
 void button_TROnLongPress() {
   if (EQUIPMENT_ON) {
     Serial.println("buttonTROnLongPress pressed");
     sender_helper("status", "TreadmillOn", 0, true);
   }
 }
-
 void button_TROff() {
   if (EQUIPMENT_ON) {
       sender_helper("status", "TreadmillStop", 0, true);
 
   }
 }
-
 void button_TROffLongPress() {
   // Serial.println("button treadmill off Long Press pressed");
   if (EQUIPMENT_ON) {
@@ -378,7 +346,6 @@ void button_TROffLongPress() {
     RESET = true;
   }
 }
-
 void button_TROffLongPressStop(){
   // Serial.println("buttonTROffLongPressStop pressed");
   if (EQUIPMENT_ON) {
@@ -386,21 +353,18 @@ void button_TROffLongPressStop(){
     RESET = false;
   }
 }
-
 void button_Pump_on() {
   Serial.println("Pump_on pressed!");
   if (EQUIPMENT_ON) {
     sender_helper("status", "PumpOn", 0, true);
   }
 }
-
 void button_Pump_off() {
   Serial.println("pump_off pressed!");
   if (EQUIPMENT_ON) {
     sender_helper("status", "PumpOn", 0, false);
   }
 }
-
 void button_liftUpLongPress(){
   if (EQUIPMENT_ON) {
     ARROW_VALUE =1;
@@ -408,7 +372,6 @@ void button_liftUpLongPress(){
     sender_helper("status", "SpeedUP", 0, true); // TODO: change to LiftUP
   }
 }
-
 void button_lowerDownLongPress(){
   if (EQUIPMENT_ON) {
     ARROW_VALUE=-1;
@@ -416,22 +379,18 @@ void button_lowerDownLongPress(){
     sender_helper("status", "SpeedRev", 0, true); // TODO: change to LiftRev
   }
 }
-
 void button_liftUpRelease(){
   if (EQUIPMENT_ON) {
   ARROW_VALUE=3;
   sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
-
 void button_lowerDownRelease(){
   if (EQUIPMENT_ON) {
   ARROW_VALUE=3;
   sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
-
-
 
 
 /*
@@ -505,9 +464,6 @@ void PunpOn_status(bool val){
 }
 
 
-
-
-
 /*
 ###################################################################################################
 ########################################## HANDLERS ###############################################
@@ -519,14 +475,14 @@ void PunpOn_status(bool val){
 void ScreenBrightnessHandler() {
   while(true){
     DIMMER =  map(analogRead(pin_dimmScreen), 0, 4095, 150, 255);
-    delay(50);
+    delay(75);
   }
 }
 
 void interruptsProg() {
-  button_1_buttonStopReset.tick();   button_2_buttonEqOn.tick();   button_3_buttonEqOff.tick();
-  button_4_buttonPumpOn.tick();   button_5_buttonPumpOff.tick();   button_6_buttonStart.tick();
-  button_7_buttonLift.tick();   button_8_buttonLower.tick();   delay(100);
+  button_1_buttonStopReset.tick();    button_2_buttonEqOn.tick();       button_3_buttonEqOff.tick();
+  button_4_buttonPumpOn.tick();       button_5_buttonPumpOff.tick();    button_6_buttonStart.tick();
+  button_7_buttonLift.tick();         button_8_buttonLower.tick();   
   }
 
 
@@ -534,6 +490,7 @@ void interruptsRun(void *pvParameters) {
   bool running = true;
   while (running) {
     interruptsProg();
+    delay(20);
   }
 }
 
@@ -616,7 +573,7 @@ void LogicsHandler(){
     if (COUNTER_ARROW_POSITION > 30) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION < 0)  { COUNTER_ARROW_POSITION = 30;}
     if (millis() - LAST_PATCKET_RSST_TIME > 1000) { RSSI_SIGNAL = -100;  LAST_PATCKET_RSST_TIME = millis();  } 
     if (millis() - lastStatusReceivedTime > 500) { Serial.println("not getting status!"); }
-    delay(100);
+    delay(75);
   }
 }
 
@@ -643,6 +600,8 @@ void MemoryCheck(){
   }
 }
 **/
+
+
 
 /*
 ###################################################################################################
@@ -696,15 +655,6 @@ void setup(void) {
   pinMode(pin_buttonEqOffLed, OUTPUT);
   pinMode(pin_buttonPumpOnLed, OUTPUT);
   pinMode(pin_buttonPumpOffLed, OUTPUT);
-
-  attachInterrupt(digitalPinToInterrupt(pin_buttonStopReset), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonStart), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonEqOn), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonEqOff), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonPumpOn), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonPumpOff), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonLift), Buttons, FALLING);
-  attachInterrupt(digitalPinToInterrupt(pin_buttonLower), Buttons, FALLING);
 
   button_1_buttonStopReset.attachClick(button_TROff);
   button_1_buttonStopReset.attachLongPressStart(button_TROffLongPress);
