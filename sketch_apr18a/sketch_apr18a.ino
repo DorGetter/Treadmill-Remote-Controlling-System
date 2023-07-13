@@ -23,7 +23,7 @@ SPEED BUTTONS CONFIGURATION!
 
 
 U8G2_ST7567_ENH_DG128064I_F_SW_I2C u8g2(U8G2_R2, 2, 15, U8X8_PIN_NONE);
- uint8_t broadcastAddress[] ={0x3C, 0x61, 0x05, 0x65, 0x03, 0x44};
+uint8_t broadcastAddress[] ={0x3C, 0x61, 0x05, 0x65, 0x03, 0x44};
 
 /*
 ###################################################################################################
@@ -184,14 +184,14 @@ void DrawResetTimmer(bool reset) {
 /******Up&Down Arrow******/
 void DrawArrows(int arrow_value, int arrow_position) {
   if (arrow_value == 1){
-    if      ((arrow_position<=10)   &&  (arrow_position>=0))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 83);}
-    else if ((arrow_position<=20)   &&  (arrow_position>11))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 83);}   
-    else if ((arrow_position<=30)  &&  (arrow_position>21))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 83);}                              
+    if      ((arrow_position<=50)     &&  (arrow_position>=0))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 83);}
+    else if ((arrow_position<=100)    &&  (arrow_position>51))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 83);}   
+    else if ((arrow_position<=150)    &&  (arrow_position>101))       {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 83);}                              
   }
   else if (arrow_value == -1){
-    if      ((arrow_position<=30)  &&  (arrow_position>21))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 80);}
-    else if ((arrow_position<=20)   &&  (arrow_position>11))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 80);}   
-    else if ((arrow_position<=10)   &&  (arrow_position>=0))      {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 80);}  
+    if      ((arrow_position<=150)    &&  (arrow_position>101))       {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 80);}
+    else if ((arrow_position<=100)    &&  (arrow_position>51))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 80);}   
+    else if ((arrow_position<=50)     &&  (arrow_position>=0))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 80);}  
   }
 }
 void DrawDone(bool done){
@@ -207,6 +207,11 @@ void DrawEquepmentOn(bool equipmentOn){
     u8g2.setCursor(2, 25);
     u8g2.print("ON");
   } 
+  else {
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setCursor(2, 25);
+    u8g2.print("OFF");
+  }
 }
 void DrawChargingSymbol(bool charge){
   if (charge){
@@ -350,27 +355,27 @@ void button_Pump_off() {
   }
 }
 void button_liftUpLongPress(){
-  if (EQUIPMENT_ON) {
+  if (EQUIPMENT_ON & TREADMILL_ON & !DONE) {
     ARROW_VALUE =1;
     COUNTER_ARROW_POSITION +=1;
     sender_helper("status", "SpeedUP", 0, true); // TODO: change to LiftUP
   }
 }
 void button_lowerDownLongPress(){
-  if (EQUIPMENT_ON) {
+  if (EQUIPMENT_ON & TREADMILL_ON & !DONE){
     ARROW_VALUE=-1;
     COUNTER_ARROW_POSITION -=1;
     sender_helper("status", "SpeedRev", 0, true); // TODO: change to LiftRev
   }
 }
 void button_liftUpRelease(){
-  if (EQUIPMENT_ON) {
+  if (EQUIPMENT_ON & TREADMILL_ON & !DONE) {
   ARROW_VALUE=3;
   sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
 void button_lowerDownRelease(){
-  if (EQUIPMENT_ON) {
+  if (EQUIPMENT_ON & TREADMILL_ON & !DONE) {
   ARROW_VALUE=3;
   sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
@@ -472,7 +477,7 @@ void interruptsRun(void *pvParameters) {
   bool running = true;
   while (running) {
     interruptsProg();
-    delay(20);
+    delay(30);
   }
 }
 
@@ -524,11 +529,7 @@ void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
     }
 }
 
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  //  Serial.print("\r\nLast Packet Send Status:\t");
-  // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-}
-
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {}
 unsigned long lastStatusReceivedTime = 0;
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   memcpy(&myData, incomingData, sizeof(myData));
@@ -543,7 +544,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     if      (strcmp(myData.operation, "Equipment_on")   == 0)    {EquipmentOn_status(myData.currentLevel);}
     else if (strcmp(myData.operation, "Treadmill_On")   == 0)    {TreadmillOn_status(myData.currentLevel);}
     else if (strcmp(myData.operation, "Pump_On")        == 0)    {PunpOn_status(myData.currentLevel);}
-    else if (strcmp(myData.operation, "Time_Out")   == 0)        {DONE= myData.currentLevel; Serial.print("DONE STATUSSL::::: "); Serial.println(DONE);}
+    else if (strcmp(myData.operation, "Time_Out")   == 0)        {DONE= myData.currentLevel;}
 
   }
 }  
@@ -552,22 +553,22 @@ void LogicsHandler(){
   while(true){
     /*Configuration of variables end cases */
     if (SPEED > 100) { SPEED = 100; } else if (SPEED <= 0)  { SPEED = 0;}
-    if (COUNTER_ARROW_POSITION > 30) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION < 0)  { COUNTER_ARROW_POSITION = 30;}
+    if (COUNTER_ARROW_POSITION > 150) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION < 0)  { COUNTER_ARROW_POSITION = 150;}
     if (millis() - LAST_PATCKET_RSST_TIME > 1000) { RSSI_SIGNAL = -100;  LAST_PATCKET_RSST_TIME = millis();  } 
     if (millis() - lastStatusReceivedTime > 500) { Serial.println("not getting status!"); }
     delay(75);
   }
 }
 
-int  lowest_memory_usage = 9999999;
-int  highest_memory_usage = 0;
-void MemoryCheck(){
-  while(true){
-    Serial.print("lowest memory usage: "); Serial.print(lowest_memory_usage);
-    Serial.print("   highest memory usage: "); Serial.println(highest_memory_usage);
-    delay(2000);
-  }
-}
+// int  lowest_memory_usage = 9999999;
+// int  highest_memory_usage = 0;
+// void MemoryCheck(){
+//   while(true){
+//     Serial.print("lowest memory usage: "); Serial.print(lowest_memory_usage);
+//     Serial.print("   highest memory usage: "); Serial.println(highest_memory_usage);
+//     delay(2000);
+//   }
+// }
 
 
 /*
@@ -652,14 +653,13 @@ void setup(void) {
   xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 8192, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&ScreenBrightnessHandler, "screenDimmer", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 4096, NULL, 1, NULL, 1);
-  xTaskCreatePinnedToCore((TaskFunction_t)&MemoryCheck, "MemoryCheck", 1024, NULL, 1, NULL, 1);
+  // xTaskCreatePinnedToCore((TaskFunction_t)&MemoryCheck, "MemoryCheck", 1024, NULL, 1, NULL, 1);
 
   // initialize leds as off.!
   digitalWrite(pin_buttonEqOffLed, HIGH);
   digitalWrite(pin_buttonPumpOffLed, HIGH); 
   digitalWrite(pin_buttonStopResetLed, HIGH);
-
- }
+}
 
  
 /*
@@ -691,10 +691,10 @@ void loop(void) {
   }
   
   u8g2.sendBuffer();  // Send the buffer to the display
-  delay(100);  // Delay for 1 second before clearing the display
+  delay(200);  // Delay for 1 second before clearing the display
   u8g2.clearBuffer();  // Clear the display buffer again
 
-  int current_memory = ESP.getFreeHeap();
-  if (current_memory < lowest_memory_usage)   {lowest_memory_usage = current_memory;}
-  if (current_memory > highest_memory_usage)  {highest_memory_usage = current_memory;}
+  // int current_memory = ESP.getFreeHeap();
+  // if (current_memory < lowest_memory_usage)   {lowest_memory_usage = current_memory;}
+  // if (current_memory > highest_memory_usage)  {highest_memory_usage = current_memory;}
 }
