@@ -96,10 +96,6 @@ void DrawBatteryGauge() {
 
   // Draw the battery fill
   u8g2.drawBox(batteryX, batteryY, (batteryWidth * BATTERY_PER) / 100, batteryHeight);
-
-  u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.setCursor(50, 25);
-  u8g2.print(battery_voltage_charge);
 }
 /******RSSI******/
 void DrawRSSIFrames(){
@@ -547,7 +543,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     if      (strcmp(myData.operation, "Equipment_on")   == 0)    {EquipmentOn_status(myData.currentLevel);}
     else if (strcmp(myData.operation, "Treadmill_On")   == 0)    {TreadmillOn_status(myData.currentLevel);}
     else if (strcmp(myData.operation, "Pump_On")        == 0)    {PunpOn_status(myData.currentLevel);}
-    else if (strcmp(myData.operation, "Time_Out")   == 0)        {DONE= myData.currentLevel;}
+    else if (strcmp(myData.operation, "Time_Out")   == 0)        {DONE= myData.currentLevel; Serial.print("DONE STATUSSL::::: "); Serial.println(DONE);}
 
   }
 }  
@@ -562,6 +558,17 @@ void LogicsHandler(){
     delay(75);
   }
 }
+
+int  lowest_memory_usage = 9999999;
+int  highest_memory_usage = 0;
+void MemoryCheck(){
+  while(true){
+    Serial.print("lowest memory usage: "); Serial.print(lowest_memory_usage);
+    Serial.print("   highest memory usage: "); Serial.println(highest_memory_usage);
+    delay(2000);
+  }
+}
+
 
 /*
 ###################################################################################################
@@ -645,7 +652,7 @@ void setup(void) {
   xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 8192, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&ScreenBrightnessHandler, "screenDimmer", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore((TaskFunction_t)&LogicsHandler, "Logics", 4096, NULL, 1, NULL, 1);
-  // xTaskCreatePinnedToCore((TaskFunction_t)&MemoryCheck, "MemoryCheck", 1024, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore((TaskFunction_t)&MemoryCheck, "MemoryCheck", 1024, NULL, 1, NULL, 1);
 
   // initialize leds as off.!
   digitalWrite(pin_buttonEqOffLed, HIGH);
@@ -660,6 +667,7 @@ void setup(void) {
 ########################################## LOOP ###################################################
 ###################################################################################################
 */
+
 void loop(void) {  
   u8g2.clearBuffer();  // Clear the display buffer
  
@@ -683,6 +691,10 @@ void loop(void) {
   }
   
   u8g2.sendBuffer();  // Send the buffer to the display
-  delay(200);  // Delay for 1 second before clearing the display
+  delay(100);  // Delay for 1 second before clearing the display
   u8g2.clearBuffer();  // Clear the display buffer again
+
+  int current_memory = ESP.getFreeHeap();
+  if (current_memory < lowest_memory_usage)   {lowest_memory_usage = current_memory;}
+  if (current_memory > highest_memory_usage)  {highest_memory_usage = current_memory;}
 }

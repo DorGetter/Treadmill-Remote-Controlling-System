@@ -86,13 +86,14 @@ int SPEED = 0;
 int SECONDS = 0;
 int RUNNING_TIMER = false;
 float POT_STATUS = 0;
-bool DONE = true;
+bool DONE = false;
 
 bool EQUIPMENT_ON_LED = false;
 bool TREADMILL_ON_LED = false;
 bool PUMP_ON_LED = false;
 bool LIFT_UP_BUTTON = false;
 bool LIFT_DOWN_BUTTON = false;
+
 
 
 
@@ -108,7 +109,8 @@ void equipmentOnTrigger(bool val){
   Serial.print("equipment trigger: "); Serial.println(val);
     if (val == EQUIPMENT_ON_LED){return;} 
     else if (val) {digitalWrite( pin_Eq_On_OUT,         HIGH);  delay(100); digitalWrite( pin_Eq_On_OUT,          LOW);delay(100);}
-    else          {digitalWrite( pin_Eq_Off_OUT,        HIGH);  delay(100); digitalWrite( pin_Eq_Off_OUT,         LOW);delay(100);
+    else          {
+                   digitalWrite( pin_Eq_Off_OUT,        HIGH);  delay(100); digitalWrite( pin_Eq_Off_OUT,         LOW);delay(100);
                    digitalWrite( pin_TreadMill_Off_OUT, HIGH);  delay(100); digitalWrite( pin_TreadMill_Off_OUT,  LOW);delay(100);
                    digitalWrite( pin_Pump_Off_OUT,      HIGH);  delay(100); digitalWrite( pin_Pump_Off_OUT,       LOW);delay(100);
                    RUNNING_TIMER = false;  SECONDS = 0;
@@ -120,7 +122,8 @@ void treadmillOnTrigger(bool val){
   if (val == TREADMILL_ON_LED){return;} 
   else if (EQUIPMENT_ON_LED){
     
-    if (val)        {digitalWrite( pin_TreadMill_On_OUT, HIGH   );  delay(200); digitalWrite( pin_TreadMill_On_OUT,  LOW); RUNNING_TIMER = true;}
+    if (val)        {if (DONE) {DONE=false;}
+                    digitalWrite( pin_TreadMill_On_OUT, HIGH   );  delay(200); digitalWrite( pin_TreadMill_On_OUT,  LOW); RUNNING_TIMER = true;}
 
     else            {digitalWrite( pin_TreadMill_Off_OUT, HIGH  );  delay(200); digitalWrite( pin_TreadMill_Off_OUT, LOW); RUNNING_TIMER = false;}
   }
@@ -216,6 +219,7 @@ void SendConnectionSignalAndStatus(){
     sender_helper("status", "Equipment_on",   0,              EQUIPMENT_ON_LED);  delay(10);
     sender_helper("status", "Treadmill_On",   0,              TREADMILL_ON_LED);  delay(10);
     sender_helper("status", "Pump_On",        0,              PUMP_ON_LED);       delay(10);
+    sender_helper("status", "Time_Out",        0,              DONE);             delay(10);
   }
 }
 
@@ -236,7 +240,6 @@ void StopperHandler(void* pvParameter) {
 
 
 int __mapPotenziometerValue__(int input) {
-  Serial.println(input);
   int inputMin = -175;     // Minimum input value
   int inputMax = 17690;  // Maximum input value
   int outputMin = 0;    // Minimum output value
@@ -252,6 +255,14 @@ void GetAnalogValue(){
   }
 }
 
+
+void steadyStop(){
+  while(true){
+      if (flag){
+        
+      }
+  }
+}
 
 /****************************************************************************************************
 *****************************************************************************************************
@@ -334,36 +345,34 @@ void setup() {
 
 
 // Global variables
-int end_time = 1800;
-int startDecreaseSeconds = end_time - 20;
+int end_time = 30;
+int startDecreaseSeconds = end_time - 5;
 
 void loop() {
-  if ((SECONDS >= startDecreaseSeconds) ||  (DONE == true)) {
-    decreasePotentiometer();
-  }
-  if (SECONDS >= end_time) {DONE = true;  RUNNING_TIMER=false; SECONDS=0; sender_helper("status", "Time_Out",0,DONE); treadmillOnTrigger(false);   delay(600);}
+  if (SECONDS >= end_time) {DONE = true; treadmillOnTrigger(false);  RUNNING_TIMER=false; SECONDS=0;}
   
-  if (TREADMILL_ON_LED && DONE) {DONE = false;  sender_helper("status", "Time_Out",0,DONE);}
+  if ((SECONDS >= startDecreaseSeconds) ||  (DONE == true)) {  decreasePotentiometer(); }
+  if ((SECONDS >= startDecreaseSeconds)) {  flag=true; }
+
+  // if ((SECONDS >= startDecreaseSeconds)) {  decreasePotentiometer(); }
+
 
     // Serial.print("eq: ");Serial.print(EQUIPMENT_ON_LED);Serial.print("   ter: ");Serial.print(TREADMILL_ON_LED);
-  // Serial.print("   pu: ");Serial.print(PUMP_ON_LED); ;Serial.print("   seconds: ");Serial.print(SECONDS);   
-  // Serial.print("  TREADMILL_ON_LED  "); Serial.print(TREADMILL_ON_LED);
-  // Serial.print("  DONE  "); Serial.println(DONE);
-  
+    // Serial.print("   pu: ");Serial.print(PUMP_ON_LED); ;Serial.print("   seconds: ");Serial.print(SECONDS);   
+    // Serial.print("  TREADMILL_ON_LED  "); Serial.print(TREADMILL_ON_LED);
+    // Serial.print("  DONE  "); Serial.println(DONE);
+ 
 }
-
-
 
 void motor_dec(int sp){
+  Serial.println("decresing!");
   motor.motorRev(sp);
+  delay(20);
   motor.motorBrake();
 }
+
 void decreasePotentiometer() {
-  if (SPEED > 0){
-    if      ( SPEED <= 16  )    { motor_dec(50);}
-    else if ( SPEED <= 32  )    { motor_dec(91);}
-    else if ( SPEED <= 48 )     { motor_dec(132);}
-    else if ( SPEED <= 64 )     { motor_dec(220);}
-    else if ( SPEED <= 100 )    { motor_dec(255);}
-  }
+  if (SPEED > 0){ 
+    
+    motor_dec(255); }
 }
