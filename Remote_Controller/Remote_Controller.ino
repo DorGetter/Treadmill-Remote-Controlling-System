@@ -359,6 +359,7 @@ void button_Pump_off() {
 }
 void button_liftUpLongPress(){
   if (EQUIPMENT_ON){
+    COUNTER_ARROW_POSITION = 0;
     ARROW_VALUE =1;
     COUNTER_ARROW_POSITION +=1;
     sender_helper("status", "LiftUP", 0, true); // TODO: change to LiftUP
@@ -366,6 +367,7 @@ void button_liftUpLongPress(){
 }
 void button_lowerDownLongPress(){
   if (EQUIPMENT_ON){
+    COUNTER_ARROW_POSITION = 100;
     ARROW_VALUE=-1;
     COUNTER_ARROW_POSITION -=1;
     sender_helper("status", "LiftRev", 0, true); // TODO: change to LiftRev
@@ -594,7 +596,7 @@ void LogicsHandler(){
   while(true){
     /*Configuration of variables end cases */
     if (SPEED > 100) { SPEED = 100; } else if (SPEED <= 0)  { SPEED = 0;}
-    if (COUNTER_ARROW_POSITION >= 100) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION <= 0)  { COUNTER_ARROW_POSITION = 100;}
+    if (COUNTER_ARROW_POSITION > 100) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION < 0)  { COUNTER_ARROW_POSITION = 100;}
     if (millis() - LAST_PATCKET_RSST_TIME > 1000) { RSSI_SIGNAL = -100;  LAST_PATCKET_RSST_TIME = millis();  } 
     if (millis() - lastStatusReceivedTime > 500) { Serial.println("not getting status!"); }
     delay(75);
