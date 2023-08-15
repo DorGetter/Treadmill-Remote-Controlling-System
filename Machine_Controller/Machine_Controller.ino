@@ -22,12 +22,16 @@
 #define pin_TreadMill_On_TEST_Led 33 
 #define pin_Pump_On_TEST_Led 32
 
+#define pin_Lift_Up_TEST_Led 19 
+#define pin_Lift_Down_TEST_Led 22
 
 
 bool EQUPMENT_STATE = false;
 bool TREADMILL_STATE = false;
 bool PUMP_STATE = false;
-
+bool LIFTUP_STATE =false; 
+bool LIFTDOWN_STATE =false; 
+ 
 
 
 void GetInputSignals(){
@@ -40,7 +44,8 @@ void GetInputSignals(){
     bool PUMP_OFF         = digitalRead(pin_Pump_Off_Led);
     bool TREADMILL_UP     = digitalRead(pin_Lift_Treadmill_Led);
     bool TREADMILL_LOWER  = digitalRead(pin_Lower_Treadmill_Led);
-
+    Serial.print("TREADMILL_UP"); Serial.println(TREADMILL_UP);    
+    Serial.print("TREADMILL_LOWER"); Serial.println(TREADMILL_LOWER);
 
     // Serial.print(" equ on:"); Serial.print(EQUIPMENT_ON); Serial.print(" equ off:"); Serial.print(EQUIPMENT_OFF);
     if (EQUIPMENT_ON & !EQUIPMENT_OFF)        { EQUPMENT_STATE = true;  }
@@ -56,11 +61,15 @@ void GetInputSignals(){
     else if (!PUNP_ON & PUMP_OFF)           { PUMP_STATE = false; }
 
 
-
+    // Serial.print("     pu on:"); Serial.print(PUNP_ON); Serial.print(" pu off:"); Serial.print(PUMP_OFF);
+    if (TREADMILL_UP)                { LIFTUP_STATE = true;   }
+    else {LIFTUP_STATE = false;}
+    if (TREADMILL_LOWER)        { LIFTDOWN_STATE = true; }
+    else { LIFTDOWN_STATE = false; }
     // Serial.print("     UP on:"); Serial.print(TREADMILL_UP); Serial.print(" LOW off:"); Serial.print(TREADMILL_LOWER);
 
     // Serial.println();
-    delay(16);
+    delay(10);
   } 
 }
 
@@ -87,17 +96,22 @@ void setup() {
   pinMode(pin_TreadMill_On_TEST_Led,  OUTPUT);
   pinMode(pin_Pump_On_TEST_Led,       OUTPUT);
 
+  pinMode(pin_Lift_Up_TEST_Led,  OUTPUT);
+  pinMode(pin_Lift_Down_TEST_Led,       OUTPUT);
+
   xTaskCreatePinnedToCore((TaskFunction_t)&GetInputSignals, "GetInputSignals", 1024, NULL, 1, NULL, 0);
 }
 
 void loop() {
 
-  Serial.print("eq_st: "); Serial.print(EQUPMENT_STATE); Serial.print("  tr_st: "); Serial.print(TREADMILL_STATE); Serial.print("  pum_st: "); Serial.println(PUMP_STATE);
+  // Serial.print("eq_st: "); Serial.print(EQUPMENT_STATE); Serial.print("  tr_st: "); Serial.print(TREADMILL_STATE); Serial.print("  pum_st: "); Serial.println(PUMP_STATE);
  
 
   if (EQUPMENT_STATE)   {digitalWrite(pin_Eq_On_TEST_Led,HIGH);         digitalWrite(pin_Eq_On_OUT, HIGH);}       else {digitalWrite(pin_Eq_On_TEST_Led,LOW);         digitalWrite(pin_Eq_On_OUT, LOW);}
   if (TREADMILL_STATE)  {digitalWrite(pin_TreadMill_On_TEST_Led,HIGH);  digitalWrite(pin_TreadMill_OUT, HIGH);}   else {digitalWrite(pin_TreadMill_On_TEST_Led,LOW);  digitalWrite(pin_TreadMill_OUT, LOW);}
   if (PUMP_STATE)       {digitalWrite(pin_Pump_On_TEST_Led,HIGH);       digitalWrite(pin_Pump_OUT, HIGH);}        else {digitalWrite(pin_Pump_On_TEST_Led,LOW);       digitalWrite(pin_Pump_OUT, LOW);}
-  
-  delay(500);
+  if (LIFTUP_STATE)       {digitalWrite(pin_Lift_Up_TEST_Led,HIGH);   } else {digitalWrite(pin_Lift_Up_TEST_Led,LOW);}
+  if (LIFTDOWN_STATE)       {digitalWrite(pin_Lift_Down_TEST_Led,HIGH); }else {digitalWrite(pin_Lift_Down_TEST_Led,LOW);}
+
+  delay(50);
 }

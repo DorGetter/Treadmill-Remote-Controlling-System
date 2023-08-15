@@ -147,6 +147,19 @@ void pumpOnTrigger(bool val){
   
 }
 
+void LiftOnTrigger(int val){
+  if      (val == 1)      {
+                            digitalWrite( pin_Lower_Treadmill_OUT, LOW );
+                            digitalWrite( pin_Lift_Treadmill_OUT, HIGH  );}
+  else if (val == -1)     {
+                            digitalWrite( pin_Lift_Treadmill_OUT, LOW  );
+                            digitalWrite( pin_Lower_Treadmill_OUT, HIGH );}
+  else if (val == 0)      {
+                            digitalWrite( pin_Lift_Treadmill_OUT, LOW  );
+                            digitalWrite( pin_Lower_Treadmill_OUT, LOW) ;}
+
+}
+
 
 
 /****************************************************************************************************
@@ -169,9 +182,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     else if (strcmp(myData.operation, "TreadmillReset") == 0) {treadmillResetTrigger(); motor.motorBrake();}
     else if (strcmp(myData.operation, "PumpOn") == 0)         {pumpOnTrigger(myData.currentLevel);}
 
-    // else if (strcmp(myData.operation, "LiftUP") == 0)    {motor.motorGo(255);  }
-    // else if (strcmp(myData.operation, "LiftRev") == 0)   {motor.motorRev(255); }
-    // else if (strcmp(myData.operation, "LiftStop") == 0)  {motor.motorBrake();  }
+    else if (strcmp(myData.operation, "LiftUP") == 0)    {digitalWrite( pin_Lower_Treadmill_OUT, LOW );
+                                                          digitalWrite( pin_Lift_Treadmill_OUT, HIGH  );
+                                                          Serial.println("Uppp");}
+    else if (strcmp(myData.operation, "LiftRev") == 0)   {digitalWrite( pin_Lift_Treadmill_OUT, LOW  );
+                                                          digitalWrite( pin_Lower_Treadmill_OUT, HIGH );
+                                                           Serial.println("Downnnn");}
+    else if (strcmp(myData.operation, "LiftStop") == 0)  {digitalWrite( pin_Lift_Treadmill_OUT, LOW  );
+                                                          digitalWrite( pin_Lower_Treadmill_OUT, LOW ); Serial.println("release");  }
 
     else if (strcmp(myData.operation, "SpeedUP") == 0)    {if (SPEED < 99) {motor.motorGo(255);} else {motor.motorBrake();}  }
     else if (strcmp(myData.operation, "SpeedRev") == 0)   {if (SPEED > 0 ) {motor.motorRev(255);} else {motor.motorBrake();} }
@@ -206,9 +224,8 @@ void GetLedAndButtonsStatus(){
     EQUIPMENT_ON_LED  = digitalRead(pin_Eq_On_Led_IN);          delay(15);
     TREADMILL_ON_LED  = digitalRead(pin_TreadMill_On_Led_IN);   delay(15);
     PUMP_ON_LED       = digitalRead(pin_Pump_On_Led_IN);        delay(15);
-
-    // LIFT_UP_BUTTON    = digitalRead(pin_Lift_Treadmill_IN);     delay(20);
-    // LIFT_DOWN_BUTTON  = digitalRead(pin_Lower_Treadmill_IN);    delay(20);
+    LIFT_UP_BUTTON    = digitalRead(pin_Lift_Treadmill_IN);     delay(15);
+    LIFT_DOWN_BUTTON  = digitalRead(pin_Lower_Treadmill_IN);    delay(15);
   }
 }
 
@@ -362,7 +379,8 @@ void setup() {
 
 
 // Global variables
-int end_time = 10;
+int SessionDuration = 30;
+int end_time = SessionDuration*60;
 int startDecreaseSeconds = end_time - 5;
 
 void loop() {

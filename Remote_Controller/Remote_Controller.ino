@@ -184,14 +184,14 @@ void DrawResetTimmer(bool reset) {
 /******Up&Down Arrow******/
 void DrawArrows(int arrow_value, int arrow_position) {
   if (arrow_value == 1){
-    if      ((arrow_position<=50)     &&  (arrow_position>=0))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 83);}
-    else if ((arrow_position<=100)    &&  (arrow_position>51))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 83);}   
-    else if ((arrow_position<=150)    &&  (arrow_position>101))       {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 83);}                              
+    if      ((arrow_position<=33)     &&  (arrow_position>=0))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 83);}
+    if ((arrow_position<=66)    &&  (arrow_position>33))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 83);}   
+    if ((arrow_position<=100)    &&  (arrow_position>66))       {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 83);}                              
   }
   else if (arrow_value == -1){
-    if      ((arrow_position<=150)    &&  (arrow_position>101))       {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 80);}
-    else if ((arrow_position<=100)    &&  (arrow_position>51))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 80);}   
-    else if ((arrow_position<=50)     &&  (arrow_position>=0))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 80);}  
+    if      ((arrow_position<=100)    &&  (arrow_position>66))       {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 45, 80);}
+    if ((arrow_position<=66)    &&  (arrow_position>33))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 50, 80);}   
+    if ((arrow_position<=33)     &&  (arrow_position>=0))        {u8g2.setFont(u8g2_font_open_iconic_arrow_2x_t);  u8g2.drawGlyph(109, 55, 80);}  
   }
 }
 void DrawDone(bool done){
@@ -267,6 +267,8 @@ struct_message myData;
 #define pin_buttonPumpOff 18
 #define pin_buttonLift 35 
 #define pin_buttonLower 34
+#define pin_buttonSpeedUp 22 
+#define pin_buttonSpeedDown 21
 
 // PINS: ButtonsLeds:
 #define pin_buttonStopResetLed 12
@@ -277,15 +279,16 @@ struct_message myData;
 #define pin_buttonPumpOffLed 13
 #define pin_buttonEqOffLed 14
 
-OneButton button_1_buttonStopReset  (pin_buttonStopReset, true);
-OneButton button_2_buttonEqOn       (pin_buttonEqOn,      true);
-OneButton button_3_buttonEqOff      (pin_buttonEqOff,     true);
-OneButton button_4_buttonPumpOn     (pin_buttonPumpOn,    true);
-OneButton button_5_buttonPumpOff    (pin_buttonPumpOff,   true);
-OneButton button_6_buttonStart      (pin_buttonStart,     true);
-OneButton button_7_buttonLift       (pin_buttonLift,      false);
-OneButton button_8_buttonLower      (pin_buttonLower,     false);
-
+OneButton button_1_buttonStopReset  (pin_buttonStopReset,   true);
+OneButton button_2_buttonEqOn       (pin_buttonEqOn,        true);
+OneButton button_3_buttonEqOff      (pin_buttonEqOff,       true);
+OneButton button_4_buttonPumpOn     (pin_buttonPumpOn,      true);
+OneButton button_5_buttonPumpOff    (pin_buttonPumpOff,     true);
+OneButton button_6_buttonStart      (pin_buttonStart,       true);
+OneButton button_7_buttonLift       (pin_buttonLift,        false);
+OneButton button_8_buttonLower      (pin_buttonLower,       false);
+OneButton button_9_buttonSpeedUp    (pin_buttonSpeedUp,     true);
+OneButton button_10_buttonSpeedDown (pin_buttonSpeedDown,   true);
 
 int ARROW_VALUE = 3;
 int COUNTER_ARROW_POSITION = 0;
@@ -355,31 +358,68 @@ void button_Pump_off() {
   }
 }
 void button_liftUpLongPress(){
+  if (EQUIPMENT_ON){
+    ARROW_VALUE =1;
+    COUNTER_ARROW_POSITION +=1;
+    sender_helper("status", "LiftUP", 0, true); // TODO: change to LiftUP
+  }
+}
+void button_lowerDownLongPress(){
+  if (EQUIPMENT_ON){
+    ARROW_VALUE=-1;
+    COUNTER_ARROW_POSITION -=1;
+    sender_helper("status", "LiftRev", 0, true); // TODO: change to LiftRev
+  }
+}
+void button_liftUpRelease(){
+  // if (EQUIPMENT_ON){
+  ARROW_VALUE=3;
+  sender_helper("status", "LiftStop", 0, true); // TODO: change to LiftStop
+  sender_helper("status", "LiftStop", 0, true); // TODO: change to LiftStop
+  // }
+}
+void button_lowerDownRelease(){
+  // if (EQUIPMENT_ON){
+  ARROW_VALUE=3;
+  sender_helper("status", "LiftStop", 0, true); // TODO: change to LiftStop
+  sender_helper("status", "LiftStop", 0, true); // TODO: change to LiftStop
+  // }
+}
+// ----------------------------------------------------- <<< added:
+void button_SpeedUpLongPress(){
+  Serial.println("pressed!");
+
   if (EQUIPMENT_ON & TREADMILL_ON & !DONE) {
     ARROW_VALUE =1;
     COUNTER_ARROW_POSITION +=1;
     sender_helper("status", "SpeedUP", 0, true); // TODO: change to LiftUP
   }
 }
-void button_lowerDownLongPress(){
+void button_SpeedDownLongPress(){
+  Serial.println("pressed! Down!");
+
   if (EQUIPMENT_ON & TREADMILL_ON & !DONE){
     ARROW_VALUE=-1;
     COUNTER_ARROW_POSITION -=1;
     sender_helper("status", "SpeedRev", 0, true); // TODO: change to LiftRev
   }
 }
-void button_liftUpRelease(){
+void button_SpeedUpRelease(){
+  Serial.println("release speed!");
   if (EQUIPMENT_ON & TREADMILL_ON & !DONE) {
   ARROW_VALUE=3;
   sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
-void button_lowerDownRelease(){
+void button_SpeedDownRelease(){
+  Serial.println("release speed!");
   if (EQUIPMENT_ON & TREADMILL_ON & !DONE) {
   ARROW_VALUE=3;
   sender_helper("status", "SpeedStop", 0, true); // TODO: change to LiftStop
   }
 }
+
+
 
 
 /*
@@ -469,7 +509,8 @@ void ScreenBrightnessHandler() {
 void interruptsProg() {
   button_1_buttonStopReset.tick();    button_2_buttonEqOn.tick();       button_3_buttonEqOff.tick();
   button_4_buttonPumpOn.tick();       button_5_buttonPumpOff.tick();    button_6_buttonStart.tick();
-  button_7_buttonLift.tick();         button_8_buttonLower.tick();   
+  button_7_buttonLift.tick();         button_8_buttonLower.tick();      button_9_buttonSpeedUp.tick();
+  button_10_buttonSpeedDown.tick();   
   }
 
 
@@ -553,7 +594,7 @@ void LogicsHandler(){
   while(true){
     /*Configuration of variables end cases */
     if (SPEED > 100) { SPEED = 100; } else if (SPEED <= 0)  { SPEED = 0;}
-    if (COUNTER_ARROW_POSITION > 150) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION < 0)  { COUNTER_ARROW_POSITION = 150;}
+    if (COUNTER_ARROW_POSITION >= 100) { COUNTER_ARROW_POSITION = 0;} else if (COUNTER_ARROW_POSITION <= 0)  { COUNTER_ARROW_POSITION = 100;}
     if (millis() - LAST_PATCKET_RSST_TIME > 1000) { RSSI_SIGNAL = -100;  LAST_PATCKET_RSST_TIME = millis();  } 
     if (millis() - lastStatusReceivedTime > 500) { Serial.println("not getting status!"); }
     delay(75);
@@ -616,6 +657,8 @@ void setup(void) {
   pinMode(pin_buttonPumpOff, INPUT_PULLUP);
   pinMode(pin_buttonLift, INPUT);
   pinMode(pin_buttonLower, INPUT);
+  pinMode(pin_buttonSpeedUp, INPUT_PULLUP);
+  pinMode(pin_buttonSpeedDown, INPUT_PULLUP);
 
   pinMode(pin_buttonStopResetLed, OUTPUT);
   pinMode(pin_buttonStartLed, OUTPUT);
@@ -648,6 +691,17 @@ void setup(void) {
   button_8_buttonLower.attachDuringLongPress(button_lowerDownLongPress);
   button_8_buttonLower.setPressTicks(0);	
   button_8_buttonLower.attachLongPressStop(button_lowerDownRelease);
+
+
+  button_9_buttonSpeedUp.attachClick(button_SpeedUpLongPress);
+  button_9_buttonSpeedUp.attachDuringLongPress(button_SpeedUpLongPress);  
+  button_9_buttonSpeedUp.setPressTicks(0);	
+  button_9_buttonSpeedUp.attachLongPressStop(button_SpeedUpRelease);
+
+  button_10_buttonSpeedDown.attachClick(button_SpeedDownLongPress);
+  button_10_buttonSpeedDown.attachDuringLongPress(button_SpeedDownLongPress);
+  button_10_buttonSpeedDown.setPressTicks(0);	
+  button_10_buttonSpeedDown.attachLongPressStop(button_SpeedDownRelease);
 
   ////////////////// Processes configurations ------------------------------------------------------------------
   xTaskCreatePinnedToCore((TaskFunction_t)&interruptsRun, "interruptsRun", 8192, NULL, 1, NULL, 1);
