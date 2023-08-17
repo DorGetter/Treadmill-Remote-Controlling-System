@@ -179,7 +179,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     if      (strcmp(myData.operation, "EquipmentOn") == 0)    {equipmentOnTrigger(myData.currentLevel);}
     else if (strcmp(myData.operation, "TreadmillOn") == 0)   {treadmillOnTrigger(myData.currentLevel);}
     else if (strcmp(myData.operation, "TreadmillStop") == 0) {treadmillStopTrigger();  motor.motorBrake();}
-    else if (strcmp(myData.operation, "TreadmillReset") == 0) {treadmillResetTrigger(); motor.motorBrake();}
+    else if (strcmp(myData.operation, "TreadmillReset") == 0) {treadmillStopTrigger(); treadmillResetTrigger(); motor.motorBrake(); }
     else if (strcmp(myData.operation, "PumpOn") == 0)         {pumpOnTrigger(myData.currentLevel);}
 
     else if (strcmp(myData.operation, "LiftUP") == 0)    {digitalWrite( pin_Lower_Treadmill_OUT, LOW );
